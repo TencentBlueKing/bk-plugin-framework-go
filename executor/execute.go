@@ -1,10 +1,10 @@
 package executor
 
 import (
-	"bpfgo/constants"
-	"bpfgo/hub"
-	"bpfgo/kit"
-	"bpfgo/runtime"
+	"github.com/homholueng/bk-plugin-framework-go/constants"
+	"github.com/homholueng/bk-plugin-framework-go/hub"
+	"github.com/homholueng/bk-plugin-framework-go/kit"
+	"github.com/homholueng/bk-plugin-framework-go/runtime"
 )
 
 func Execute(traceID string, version string, reader runtime.ContextReader, runtime runtime.PluginExecuteRuntime) (constants.State, error) {

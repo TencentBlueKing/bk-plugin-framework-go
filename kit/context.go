@@ -1,8 +1,8 @@
 package kit
 
 import (
-	"bpfgo/constants"
-	"bpfgo/runtime"
+	"github.com/homholueng/bk-plugin-framework-go/constants"
+	"github.com/homholueng/bk-plugin-framework-go/runtime"
 )
 
 type Context struct {

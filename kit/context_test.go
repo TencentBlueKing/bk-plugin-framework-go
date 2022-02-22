@@ -1,8 +1,9 @@
 package kit
 
 import (
-	"bpfgo/constants"
 	"testing"
+
+	"github.com/homholueng/bk-plugin-framework-go/constants"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

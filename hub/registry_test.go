@@ -1,8 +1,9 @@
 package hub
 
 import (
-	"bpfgo/kit"
 	"testing"
+
+	"github.com/homholueng/bk-plugin-framework-go/kit"
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/stretchr/testify/assert"

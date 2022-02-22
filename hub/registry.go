@@ -1,10 +1,11 @@
 package hub
 
 import (
-	"bpfgo/kit"
 	"fmt"
 	"regexp"
 	"sort"
+
+	"github.com/homholueng/bk-plugin-framework-go/kit"
 
 	"github.com/alecthomas/jsonschema"
 )
