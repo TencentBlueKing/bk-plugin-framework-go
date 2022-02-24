@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Schedule(traceID string, version string, invokeCount int, reader runtime.ContextReader, runtime runtime.PluginExecuteRuntime) error {
+func Schedule(traceID string, version string, invokeCount int, reader runtime.ContextReader, runtime runtime.PluginScheduleExecuteRuntime) error {
 	// get plugin
 	p, err := hub.GetPlugin(version)
 	if err != nil {

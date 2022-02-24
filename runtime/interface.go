@@ -14,7 +14,10 @@ type PluginExecuteRuntime interface {
 	GetOutputsStore() ObjectStore
 	GetContextStore() ObjectStore
 	SetPoll(traceID string, version string, invokeCount int, interval int) error
+}
+
+type PluginScheduleExecuteRuntime interface {
+	PluginExecuteRuntime
 	SetFail(traceID string, err error) error
 	SetSuccess(traceID string) error
-	Version() string
 }
