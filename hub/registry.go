@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -19,10 +20,13 @@ func clearHub() {
 }
 
 type PluginDetail struct {
-	plugin              kit.Plugin
-	inputsSchema        []byte
-	contextInputsSchema []byte
-	outputsSchema       []byte
+	plugin                  kit.Plugin
+	inputsSchema            []byte
+	contextInputsSchema     []byte
+	outputsSchema           []byte
+	inputsSchemaJSON        map[string]interface{}
+	contextInputsSchemaJSON map[string]interface{}
+	outputsSchemaJSON       map[string]interface{}
 }
 
 func (p *PluginDetail) Plugin() kit.Plugin {
@@ -41,13 +45,38 @@ func (p *PluginDetail) OutputsSchema() []byte {
 	return p.outputsSchema
 }
 
-func reflectJSONSchema(inputs interface{}) ([]byte, error) {
-	if inputs == nil {
-		return emptySchema, nil
+func (p *PluginDetail) InputsSchemaJSON() map[string]interface{} {
+	return p.inputsSchemaJSON
+}
+
+func (p *PluginDetail) ContextInputsSchemaJSON() map[string]interface{} {
+	return p.contextInputsSchemaJSON
+}
+
+func (p *PluginDetail) OutputsSchemaJSON() map[string]interface{} {
+	return p.outputsSchemaJSON
+}
+
+func reflectJSONSchema(object interface{}) ([]byte, map[string]interface{}, error) {
+	if object == nil {
+		var emptySchemaJSON map[string]interface{}
+		if err := json.Unmarshal(emptySchema, &emptySchemaJSON); err != nil {
+			return nil, nil, err
+		}
+		return emptySchema, emptySchemaJSON, nil
 	}
 
 	reflector := jsonschema.Reflector{ExpandedStruct: true}
-	return reflector.Reflect(inputs).MarshalJSON()
+	objectSchema, err := reflector.Reflect(object).MarshalJSON()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var objectSchemaJSON map[string]interface{}
+	if err := json.Unmarshal(objectSchema, &objectSchemaJSON); err != nil {
+		return nil, nil, err
+	}
+	return objectSchema, objectSchemaJSON, nil
 }
 
 func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, outputs interface{}) {
@@ -62,24 +91,32 @@ func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, ou
 	}
 
 	// generate inputs schema
-	inputsSchema, err := reflectJSONSchema(inputs)
+	inputsSchema, inputsSchemaJSON, err := reflectJSONSchema(inputs)
 	if err != nil {
 		panic(err)
 	}
 
 	// generate context inputs schema
-	contextInputsSchema, err := reflectJSONSchema(contextInputs)
+	contextInputsSchema, contextInputsSchemaJSON, err := reflectJSONSchema(contextInputs)
 	if err != nil {
 		panic(err)
 	}
 
 	// generate outputs schema
-	outputsSchema, err := reflectJSONSchema(outputs)
+	outputsSchema, outputsSchemaJSON, err := reflectJSONSchema(outputs)
 	if err != nil {
 		panic(err)
 	}
 
-	hub[v] = &PluginDetail{plugin: p, inputsSchema: inputsSchema, contextInputsSchema: contextInputsSchema, outputsSchema: outputsSchema}
+	hub[v] = &PluginDetail{
+		plugin:                  p,
+		inputsSchema:            inputsSchema,
+		contextInputsSchema:     contextInputsSchema,
+		outputsSchema:           outputsSchema,
+		inputsSchemaJSON:        inputsSchemaJSON,
+		contextInputsSchemaJSON: contextInputsSchemaJSON,
+		outputsSchemaJSON:       outputsSchemaJSON,
+	}
 }
 
 func GetPluginVersions() []string {

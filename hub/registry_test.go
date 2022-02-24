@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/homholueng/bk-plugin-framework-go/kit"
@@ -53,21 +54,30 @@ func (t *MetaTestPlugin) Execute(c *kit.Context) error {
 
 func TestPluginDetailPlugin(t *testing.T) {
 	plugin := MetaTestPlugin{}
-	inputSchema := []byte("inputSchema")
-	contextInputSchema := []byte("contextInputSchema")
-	outputSchema := []byte("outputSchema")
+	inputsSchema := []byte("{\"inputsSchema\": 1}")
+	contextInputsSchema := []byte("{\"contextInputsSchema\": 2}")
+	outputsSchema := []byte("{\"outputsSchema\": 3}")
+	inputsSchemaJSON := map[string]interface{}{"inputsSchema": 1}
+	contextInputsSchemaJSON := map[string]interface{}{"contextInputsSchema": 2}
+	outputsSchemaJSON := map[string]interface{}{"outputsSchema": 3}
 
-	meta := PluginDetail{
-		plugin:              &plugin,
-		inputsSchema:        inputSchema,
-		contextInputsSchema: contextInputSchema,
-		outputsSchema:       outputSchema,
+	detail := PluginDetail{
+		plugin:                  &plugin,
+		inputsSchema:            inputsSchema,
+		contextInputsSchema:     contextInputsSchema,
+		outputsSchema:           outputsSchema,
+		inputsSchemaJSON:        inputsSchemaJSON,
+		contextInputsSchemaJSON: contextInputsSchemaJSON,
+		outputsSchemaJSON:       outputsSchemaJSON,
 	}
 
-	assert.Equal(t, meta.Plugin(), &plugin)
-	assert.Equal(t, meta.InputsSchema(), inputSchema)
-	assert.Equal(t, meta.ContextInputsSchema(), contextInputSchema)
-	assert.Equal(t, meta.OutputsSchema(), outputSchema)
+	assert.Equal(t, detail.Plugin(), &plugin)
+	assert.Equal(t, detail.InputsSchema(), inputsSchema)
+	assert.Equal(t, detail.ContextInputsSchema(), contextInputsSchema)
+	assert.Equal(t, detail.OutputsSchema(), outputsSchema)
+	assert.Equal(t, detail.InputsSchemaJSON(), inputsSchemaJSON)
+	assert.Equal(t, detail.ContextInputsSchemaJSON(), contextInputsSchemaJSON)
+	assert.Equal(t, detail.OutputsSchemaJSON(), outputsSchemaJSON)
 }
 
 func TestReflectJSONSchema(t *testing.T) {
@@ -80,18 +90,28 @@ func TestReflectJSONSchema(t *testing.T) {
 	schema, err := reflector.Reflect(&rs).MarshalJSON()
 	assert.Nil(t, err)
 
+	var schemaJSON map[string]interface{}
+	err = json.Unmarshal(schema, &schemaJSON)
+	assert.Nil(t, err)
+
+	var emptySchemaJSON map[string]interface{}
+	err = json.Unmarshal(emptySchema, &emptySchemaJSON)
+	assert.Nil(t, err)
+
 	var cases = []struct {
-		in       interface{}
-		expected []byte
+		in                 interface{}
+		expectedSchema     []byte
+		expectedSchemaJSON interface{}
 	}{
-		{rs, schema},
-		{nil, emptySchema},
+		{rs, schema, schemaJSON},
+		{nil, emptySchema, emptySchemaJSON},
 	}
 
 	for _, c := range cases {
-		actual, err := reflectJSONSchema(c.in)
+		actualSchema, actualSchemaJSON, err := reflectJSONSchema(c.in)
 		assert.Nil(t, err)
-		assert.Equal(t, actual, c.expected)
+		assert.Equal(t, actualSchema, c.expectedSchema)
+		assert.Equal(t, actualSchemaJSON, c.expectedSchemaJSON)
 	}
 }
 
