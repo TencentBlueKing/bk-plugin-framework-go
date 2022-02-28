@@ -1,3 +1,19 @@
+// TencentBlueKing is pleased to support the open source community by making
+// 蓝鲸智云-gopkg available.
+// Copyright (C) 2017-2022 THL A29 Limited, a Tencent company. All rights reserved.
+// Licensed under the MIT License (the "License"); you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at http://opensource.org/licenses/MIT
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+// an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
+// Package hub implements a plugin hub. It provide the capability to:
+//
+// 1. install specific version to current bk-plugin project.
+//
+// 2. collect installed bk-plugin and it's meta data.
+//
+// 3. retrive information for specific version of bk-plugin.
 package hub
 
 import (
@@ -11,14 +27,21 @@ import (
 	"github.com/alecthomas/jsonschema"
 )
 
+// emptySchema will set to plugin when the inputs or outputs schema of this plugin is empty.
 var emptySchema = []byte(`{"type": "object", "properties": {}, "required": [], "definitions": {}}`)
+
+// versionre means the valid version code regex.
 var versionRe = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9][a-z0-9]*$`)
+
+// hub will store all installed plugin detail.
 var hub = map[string]*PluginDetail{}
 
+// clearHub will remove all version of current bk-plugin.
 func clearHub() {
 	hub = make(map[string]*PluginDetail)
 }
 
+// A PluginDetail store the detail data of specific plugin version.
 type PluginDetail struct {
 	plugin                  kit.Plugin
 	inputsSchema            []byte
@@ -29,34 +52,42 @@ type PluginDetail struct {
 	outputsSchemaJSON       map[string]interface{}
 }
 
+// Plugin returns the Plugin instance.
 func (p *PluginDetail) Plugin() kit.Plugin {
 	return p.plugin
 }
 
+// InputsSchema returns the plugin inputs json schema.
 func (p *PluginDetail) InputsSchema() []byte {
 	return p.inputsSchema
 }
 
+// ContextInputsSchema returns the plugin context inputs json schema.
 func (p *PluginDetail) ContextInputsSchema() []byte {
 	return p.contextInputsSchema
 }
 
+// OutputsSchema returns the plugin outputs json schema.
 func (p *PluginDetail) OutputsSchema() []byte {
 	return p.outputsSchema
 }
 
+// InputsSchemaJSON returns the unmarshaled plugin inputs json schema.
 func (p *PluginDetail) InputsSchemaJSON() map[string]interface{} {
 	return p.inputsSchemaJSON
 }
 
+// ContextInputsSchemaJSON returns the unmarshaled plugin context inputs json schema.
 func (p *PluginDetail) ContextInputsSchemaJSON() map[string]interface{} {
 	return p.contextInputsSchemaJSON
 }
 
+// OutputsSchemaJSON returns the unmarshaled plugin outputs json schema.
 func (p *PluginDetail) OutputsSchemaJSON() map[string]interface{} {
 	return p.outputsSchemaJSON
 }
 
+// reflectJSONSchema returns the byte array and string map of object's json schema.
 func reflectJSONSchema(object interface{}) ([]byte, map[string]interface{}, error) {
 	if object == nil {
 		var emptySchemaJSON map[string]interface{}
@@ -79,6 +110,18 @@ func reflectJSONSchema(object interface{}) ([]byte, map[string]interface{}, erro
 	return objectSchema, objectSchemaJSON, nil
 }
 
+// MustInstall will install a version of plugin to hub.
+//
+// The p is the plugin will be installed.
+//
+// The inputs is inputs struct of this version, pass nil if this version
+// do not have inputs.
+//
+// The contextInputs is context inputs struct of this version, pass nil if this version
+// do not have context inputs.
+//
+// The outputs is outputs struct of this version, pass nil if this version
+// do not have outputs.
 func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, outputs interface{}) {
 	// versionw validation
 	v := p.Version()
@@ -119,6 +162,7 @@ func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, ou
 	}
 }
 
+// GetPluginVersions returns the versions of intalled plugin instance in new to old order.
 func GetPluginVersions() []string {
 	versions := make([]string, 0, len(hub))
 	for k := range hub {
@@ -128,6 +172,7 @@ func GetPluginVersions() []string {
 	return versions
 }
 
+// GetPluginDetail returns PluginDetail of specific plugin version.
 func GetPluginDetail(v string) (*PluginDetail, error) {
 	if meta, found := hub[v]; found {
 		return meta, nil
@@ -136,6 +181,7 @@ func GetPluginDetail(v string) (*PluginDetail, error) {
 	}
 }
 
+// GetPluginDetail returns Plugin of specific plugin version.
 func GetPlugin(v string) (kit.Plugin, error) {
 	meta, err := GetPluginDetail(v)
 	if err != nil {

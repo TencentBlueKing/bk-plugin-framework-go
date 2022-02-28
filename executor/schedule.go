@@ -1,3 +1,12 @@
+// TencentBlueKing is pleased to support the open source community by making
+// 蓝鲸智云-gopkg available.
+// Copyright (C) 2017-2022 THL A29 Limited, a Tencent company. All rights reserved.
+// Licensed under the MIT License (the "License"); you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at http://opensource.org/licenses/MIT
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+// an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
 package executor
 
 import (
@@ -9,6 +18,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Schedule define the schedule action for bk-plugin execution model.
+//
+// The traceID represent the unique id for this execution.
+//
+// The version represent the version of plugin which will be executed.
+//
+// The reader set the read source of inputs.
+//
+// The runtime set the execute runtime use in schedule action.
 func Schedule(traceID string, version string, invokeCount int, reader runtime.ContextReader, runtime runtime.PluginScheduleExecuteRuntime) error {
 	// get plugin
 	p, err := hub.GetPlugin(version)
