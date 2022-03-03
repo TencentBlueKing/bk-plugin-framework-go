@@ -48,7 +48,7 @@ func Execute(traceID string, version string, reader runtime.ContextReader, runti
 	}
 
 	if err := runtime.SetPoll(traceID, version, c.InvokeCount(), c.PollInterval()); err != nil {
-		return constants.StateFail, nil
+		return constants.StateFail, err
 	}
 
 	return constants.StatePoll, nil
