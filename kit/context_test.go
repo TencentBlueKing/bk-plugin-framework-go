@@ -11,6 +11,7 @@ package kit
 
 import (
 	"testing"
+	"time"
 
 	"github.com/homholueng/bk-plugin-framework-go/constants"
 
@@ -72,7 +73,6 @@ func TestContext(t *testing.T) {
 	c := Context{
 		traceID:      "trace",
 		state:        constants.StateEmpty,
-		pollInterval: -1,
 		invokeCount:  1,
 		reader:       &reader,
 		store:        &store,
@@ -82,11 +82,13 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, c.TraceID(), "trace")
 	assert.Equal(t, c.State(), constants.StateEmpty)
 	assert.Equal(t, c.InvokeCount(), 1)
+	assert.Equal(t, c.PollInterval(), 0*time.Second)
+	assert.Equal(t, c.WaitingPoll(), false)
 
 	// WaitPoll test
 	assert.False(t, c.WaitingPoll())
-	c.WaitPoll(1)
-	assert.Equal(t, c.pollInterval, 1)
+	c.WaitPoll(5 * time.Second)
+	assert.Equal(t, c.pollInterval, 5*time.Second)
 	assert.True(t, c.WaitingPoll())
 
 	// Read test
@@ -133,7 +135,8 @@ func TestNewContext(t *testing.T) {
 
 	assert.Equal(t, c.traceID, traceID)
 	assert.Equal(t, c.state, state)
-	assert.Equal(t, c.pollInterval, -1)
+	assert.Equal(t, c.pollInterval, 0*time.Second)
+	assert.Equal(t, c.waitingPoll, false)
 	assert.Equal(t, c.invokeCount, invokeCount)
 	assert.Equal(t, c.reader, &reader)
 	assert.Equal(t, c.store, &store)

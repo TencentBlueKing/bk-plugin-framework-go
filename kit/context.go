@@ -12,6 +12,8 @@
 package kit
 
 import (
+	"time"
+
 	"github.com/homholueng/bk-plugin-framework-go/constants"
 	"github.com/homholueng/bk-plugin-framework-go/runtime"
 )
@@ -20,7 +22,8 @@ import (
 type Context struct {
 	traceID      string
 	state        constants.State
-	pollInterval int
+	pollInterval time.Duration
+	waitingPoll  bool
 	invokeCount  int
 	reader       runtime.ContextReader
 	store        runtime.ObjectStore
@@ -44,7 +47,6 @@ func NewContext(traceID string, state constants.State, invokeCount int, reader r
 	return &Context{
 		traceID:      traceID,
 		state:        state,
-		pollInterval: -1,
 		invokeCount:  invokeCount,
 		reader:       reader,
 		store:        store,
@@ -68,23 +70,19 @@ func (c *Context) InvokeCount() int {
 }
 
 // PollInterval returns next poll execute's interval.
-func (c *Context) PollInterval() int {
+func (c *Context) PollInterval() time.Duration {
 	return c.pollInterval
 }
 
-// WaitPoll tells executor to execute plugin with poll state
-// after interval seconds.
-func (c *Context) WaitPoll(interval int) {
-	if interval < 0 {
-		c.pollInterval = 0
-	} else {
-		c.pollInterval = interval
-	}
+// WaitPoll tells executor to execute plugin with poll state after duration.
+func (c *Context) WaitPoll(interval time.Duration) {
+	c.pollInterval = interval
+	c.waitingPoll = true
 }
 
 // WaitingPoll returns whether current execution should enter poll state.
 func (c *Context) WaitingPoll() bool {
-	return c.pollInterval >= 0
+	return c.waitingPoll
 }
 
 // ReadInputs parses inputs data and store the result

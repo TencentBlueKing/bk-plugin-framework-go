@@ -10,6 +10,8 @@
 // Package runtime define the plugin runtime related interfaces.
 package runtime
 
+import "time"
+
 // ContextReader is the interface that wraps the basic read method
 // used by Context
 //
@@ -46,7 +48,7 @@ type ObjectStore interface {
 type PluginExecuteRuntime interface {
 	GetOutputsStore() ObjectStore
 	GetContextStore() ObjectStore
-	SetPoll(traceID string, version string, invokeCount int, interval int) error
+	SetPoll(traceID string, version string, invokeCount int, after time.Duration) error
 }
 
 // PluginExecuteRuntime is the interface that wraps the basic runtime method
