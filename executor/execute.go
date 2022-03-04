@@ -32,6 +32,7 @@ func Execute(traceID string, version string, reader runtime.ContextReader, runti
 	// get plugin
 	p, err := hub.GetPlugin(version)
 	if err != nil {
+		logger.Errorf("get plugin failed: %v\n", err)
 		return constants.StateFail, err
 	}
 
@@ -40,6 +41,7 @@ func Execute(traceID string, version string, reader runtime.ContextReader, runti
 
 	// execute
 	if err := p.Execute(c); err != nil {
+		logger.Errorf("plugin execute return err: %v\n", err)
 		return constants.StateFail, err
 	}
 
@@ -49,6 +51,7 @@ func Execute(traceID string, version string, reader runtime.ContextReader, runti
 	}
 
 	if err := runtime.SetPoll(traceID, version, c.InvokeCount(), c.PollInterval()); err != nil {
+		logger.Errorf("execute success but set poll err: %v\n", err)
 		return constants.StateFail, err
 	}
 

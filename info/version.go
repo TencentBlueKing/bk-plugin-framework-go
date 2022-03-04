@@ -11,7 +11,7 @@
 package info
 
 const (
-	version = "v0.2.2"
+	version = "v0.2.3"
 )
 
 // Version returns the current version number of bk-plugin-framework-go.

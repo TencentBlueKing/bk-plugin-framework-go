@@ -33,6 +33,7 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 	// get plugin
 	p, err := hub.GetPlugin(version)
 	if err != nil {
+		logger.Errorf("get plugin failed: %v\n", err)
 		if setErr := runtime.SetFail(traceID, err); setErr != nil {
 			return errors.Wrap(errors.Wrap(err, setErr.Error()), "SetFail after GetPlugin error")
 		}
@@ -43,7 +44,9 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 
 	// execute
 	if err := p.Execute(c); err != nil {
+		logger.Errorf("plugin execute return err: %v\n", err)
 		if setErr := runtime.SetFail(traceID, err); setErr != nil {
+			logger.Errorf("set fail after execute err: %v\n", setErr)
 			return errors.Wrap(errors.Wrap(err, setErr.Error()), "SetFail after Execute error")
 		}
 	}
@@ -51,13 +54,16 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 	// no poll request, execute success
 	if !c.WaitingPoll() {
 		if err := runtime.SetSuccess(traceID); err != nil {
+			logger.Errorf("plugin execute success but set success err: %v\n", err)
 			return err
 		}
 		return nil
 	}
 
 	if err := runtime.SetPoll(traceID, version, c.InvokeCount(), c.PollInterval()); err != nil {
+		logger.Errorf("plugin execute success bug set poll err: %v\n", err)
 		if setErr := runtime.SetFail(traceID, err); setErr != nil {
+			logger.Errorf("set fail after set poll fail err: %v\n", setErr)
 			return errors.Wrap(errors.Wrap(err, setErr.Error()), "SetFail after SetPoll error")
 		}
 	}
