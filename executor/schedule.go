@@ -10,6 +10,8 @@
 package executor
 
 import (
+	log "github.com/sirupsen/logrus"
+
 	"github.com/homholueng/bk-plugin-framework-go/constants"
 	"github.com/homholueng/bk-plugin-framework-go/hub"
 	"github.com/homholueng/bk-plugin-framework-go/kit"
@@ -27,7 +29,7 @@ import (
 // The reader set the read source of inputs.
 //
 // The runtime set the execute runtime use in schedule action.
-func Schedule(traceID string, version string, invokeCount int, reader runtime.ContextReader, runtime runtime.PluginScheduleExecuteRuntime) error {
+func Schedule(traceID string, version string, invokeCount int, reader runtime.ContextReader, runtime runtime.PluginScheduleExecuteRuntime, logger *log.Entry) error {
 	// get plugin
 	p, err := hub.GetPlugin(version)
 	if err != nil {
@@ -37,7 +39,7 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 	}
 
 	// init context
-	c := kit.NewContext(traceID, constants.StatePoll, invokeCount, reader, runtime.GetContextStore(), runtime.GetOutputsStore())
+	c := kit.NewContext(traceID, constants.StatePoll, invokeCount, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
 
 	// execute
 	if err := p.Execute(c); err != nil {

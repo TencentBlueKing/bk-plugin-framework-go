@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/homholueng/bk-plugin-framework-go/constants"
 
 	"github.com/stretchr/testify/assert"
@@ -131,6 +133,7 @@ func TestNewContext(t *testing.T) {
 		&reader,
 		&store,
 		&outputsStore,
+		log.WithFields(log.Fields{}),
 	)
 
 	assert.Equal(t, c.traceID, traceID)

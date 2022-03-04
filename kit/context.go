@@ -16,6 +16,7 @@ import (
 
 	"github.com/homholueng/bk-plugin-framework-go/constants"
 	"github.com/homholueng/bk-plugin-framework-go/runtime"
+	log "github.com/sirupsen/logrus"
 )
 
 // A Context store all context information and data for once plugin execution.
@@ -28,6 +29,7 @@ type Context struct {
 	reader       runtime.ContextReader
 	store        runtime.ObjectStore
 	outputsStore runtime.ObjectStore
+	Logger       *log.Entry
 }
 
 // NewContext returns a new Context instance.
@@ -43,7 +45,15 @@ type Context struct {
 // The store set the store of context data.
 //
 // The outputsStore set the store of plugin outputs.
-func NewContext(traceID string, state constants.State, invokeCount int, reader runtime.ContextReader, store runtime.ObjectStore, ouputsStore runtime.ObjectStore) *Context {
+func NewContext(
+	traceID string,
+	state constants.State,
+	invokeCount int,
+	reader runtime.ContextReader,
+	store runtime.ObjectStore,
+	ouputsStore runtime.ObjectStore,
+	logger *log.Entry,
+) *Context {
 	return &Context{
 		traceID:      traceID,
 		state:        state,
@@ -51,6 +61,7 @@ func NewContext(traceID string, state constants.State, invokeCount int, reader r
 		reader:       reader,
 		store:        store,
 		outputsStore: ouputsStore,
+		Logger:       logger,
 	}
 }
 

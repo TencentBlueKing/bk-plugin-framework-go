@@ -16,6 +16,7 @@ import (
 	"github.com/homholueng/bk-plugin-framework-go/hub"
 	"github.com/homholueng/bk-plugin-framework-go/kit"
 	"github.com/homholueng/bk-plugin-framework-go/runtime"
+	log "github.com/sirupsen/logrus"
 )
 
 // Execute define the execute action for bk-plugin execution model.
@@ -27,7 +28,7 @@ import (
 // The reader set the read source of inputs.
 //
 // The runtime set the execute runtime use in execute action.
-func Execute(traceID string, version string, reader runtime.ContextReader, runtime runtime.PluginExecuteRuntime) (constants.State, error) {
+func Execute(traceID string, version string, reader runtime.ContextReader, runtime runtime.PluginExecuteRuntime, logger *log.Entry) (constants.State, error) {
 	// get plugin
 	p, err := hub.GetPlugin(version)
 	if err != nil {
@@ -35,7 +36,7 @@ func Execute(traceID string, version string, reader runtime.ContextReader, runti
 	}
 
 	// init context
-	c := kit.NewContext(traceID, constants.StateEmpty, 1, reader, runtime.GetContextStore(), runtime.GetOutputsStore())
+	c := kit.NewContext(traceID, constants.StateEmpty, 1, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
 
 	// execute
 	if err := p.Execute(c); err != nil {
