@@ -29,7 +29,7 @@ type Context struct {
 	reader       runtime.ContextReader
 	store        runtime.ObjectStore
 	outputsStore runtime.ObjectStore
-	Logger       *log.Entry
+	*log.Entry
 }
 
 // NewContext returns a new Context instance.
@@ -61,7 +61,7 @@ func NewContext(
 		reader:       reader,
 		store:        store,
 		outputsStore: ouputsStore,
-		Logger:       logger,
+		Entry:        logger,
 	}
 }
 
