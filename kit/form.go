@@ -7,14 +7,10 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// Package info store basic information of bk-plugin-framework-go.
-package info
+package kit
 
-const (
-	version = "v0.3.0"
-)
+// Form is alias for map[string]map[string]interface{}
+type Form map[string]map[string]interface{}
 
-// Version returns the current version number of bk-plugin-framework-go.
-func Version() string {
-	return version
-}
+// F is alias for map[string]interface{}
+type F map[string]interface{}

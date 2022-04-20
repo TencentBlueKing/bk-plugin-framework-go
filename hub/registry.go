@@ -88,7 +88,7 @@ func (p *PluginDetail) OutputsSchemaJSON() map[string]interface{} {
 }
 
 // reflectJSONSchema returns the byte array and string map of object's json schema.
-func reflectJSONSchema(object interface{}) ([]byte, map[string]interface{}, error) {
+func reflectJSONSchema(object interface{}, extraAttrs map[string]map[string]interface{}) ([]byte, map[string]interface{}, error) {
 	if object == nil {
 		var emptySchemaJSON map[string]interface{}
 		if err := json.Unmarshal(emptySchema, &emptySchemaJSON); err != nil {
@@ -97,16 +97,37 @@ func reflectJSONSchema(object interface{}) ([]byte, map[string]interface{}, erro
 		return emptySchema, emptySchemaJSON, nil
 	}
 
+	// generate json schema
 	reflector := jsonschema.Reflector{ExpandedStruct: true}
 	objectSchema, err := reflector.Reflect(object).MarshalJSON()
 	if err != nil {
 		return nil, nil, err
 	}
 
+	// inject extraAttrs
 	var objectSchemaJSON map[string]interface{}
 	if err := json.Unmarshal(objectSchema, &objectSchemaJSON); err != nil {
 		return nil, nil, err
 	}
+
+	properties := objectSchemaJSON["properties"].(map[string]interface{})
+	if extraAttrs != nil {
+		for prop := range extraAttrs {
+			for k, v := range extraAttrs[prop] {
+				if _, ok := properties[prop]; ok {
+					property := properties[prop].(map[string]interface{})
+					property[k] = v
+				}
+			}
+		}
+
+		// re-marshal schema
+		objectSchema, err = json.Marshal(objectSchemaJSON)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	return objectSchema, objectSchemaJSON, nil
 }
 
@@ -122,7 +143,9 @@ func reflectJSONSchema(object interface{}) ([]byte, map[string]interface{}, erro
 //
 // The outputs is outputs struct of this version, pass nil if this version
 // do not have outputs.
-func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, outputs interface{}) {
+//
+// The inputsForm is json schema form for inputs
+func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, outputs interface{}, inputsForm kit.Form) {
 	// versionw validation
 	v := p.Version()
 	if !versionRe.MatchString(v) {
@@ -134,19 +157,19 @@ func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, ou
 	}
 
 	// generate inputs schema
-	inputsSchema, inputsSchemaJSON, err := reflectJSONSchema(inputs)
+	inputsSchema, inputsSchemaJSON, err := reflectJSONSchema(inputs, inputsForm)
 	if err != nil {
 		panic(err)
 	}
 
 	// generate context inputs schema
-	contextInputsSchema, contextInputsSchemaJSON, err := reflectJSONSchema(contextInputs)
+	contextInputsSchema, contextInputsSchemaJSON, err := reflectJSONSchema(contextInputs, nil)
 	if err != nil {
 		panic(err)
 	}
 
 	// generate outputs schema
-	outputsSchema, outputsSchemaJSON, err := reflectJSONSchema(outputs)
+	outputsSchema, outputsSchemaJSON, err := reflectJSONSchema(outputs, nil)
 	if err != nil {
 		panic(err)
 	}

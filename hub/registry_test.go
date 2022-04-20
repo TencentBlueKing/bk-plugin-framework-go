@@ -90,6 +90,7 @@ func TestPluginDetailPlugin(t *testing.T) {
 }
 
 func TestReflectJSONSchema(t *testing.T) {
+	// case 1
 	type ReflectStruct struct {
 		TemplateID int    `json:"template_id"`
 		TaskName   string `json:"task_name"`
@@ -103,24 +104,61 @@ func TestReflectJSONSchema(t *testing.T) {
 	err = json.Unmarshal(schema, &schemaJSON)
 	assert.Nil(t, err)
 
+	// case 2
 	var emptySchemaJSON map[string]interface{}
 	err = json.Unmarshal(emptySchema, &emptySchemaJSON)
 	assert.Nil(t, err)
 
+	// case 3
+	type ReflectStructWithFrom struct {
+		TemplateID int    `json:"template_id"`
+		TaskName   string `json:"task_name"`
+	}
+	inputsForm := kit.Form{
+		"template_id": {
+			"attr1": "val1",
+			"attr2": "val2",
+		},
+		"task_name": {
+			"attr3": kit.F{
+				"sub_attr3": "val3",
+			},
+		},
+	}
+	var rsf ReflectStructWithFrom
+	rsfSchema, err := reflector.Reflect(&rsf).MarshalJSON()
+	assert.Nil(t, err)
+
+	var rsfSchemaJSON map[string]interface{}
+	err = json.Unmarshal(schema, &rsfSchemaJSON)
+	assert.Nil(t, err)
+	properties := rsfSchemaJSON["properties"].(map[string]interface{})
+	for prop, attrs := range inputsForm {
+		for k, v := range attrs {
+			property := properties[prop].(map[string]interface{})
+			property[k] = v
+		}
+	}
+
+	rsfSchema, err = json.Marshal(rsfSchemaJSON)
+	assert.Nil(t, err)
+
 	var cases = []struct {
 		in                 interface{}
+		extraAttrs         kit.Form
 		expectedSchema     []byte
 		expectedSchemaJSON interface{}
 	}{
-		{rs, schema, schemaJSON},
-		{nil, emptySchema, emptySchemaJSON},
+		{rs, nil, schema, schemaJSON},
+		{rsf, inputsForm, rsfSchema, rsfSchemaJSON},
+		{nil, nil, emptySchema, emptySchemaJSON},
 	}
 
 	for _, c := range cases {
-		actualSchema, actualSchemaJSON, err := reflectJSONSchema(c.in)
+		actualSchema, actualSchemaJSON, err := reflectJSONSchema(c.in, c.extraAttrs)
 		assert.Nil(t, err)
-		assert.Equal(t, actualSchema, c.expectedSchema)
-		assert.Equal(t, actualSchemaJSON, c.expectedSchemaJSON)
+		assert.Equal(t, c.expectedSchema, actualSchema)
+		assert.Equal(t, c.expectedSchemaJSON, actualSchemaJSON)
 	}
 }
 
@@ -144,6 +182,18 @@ type MustInstallTestPluginInput struct{}
 type MustInstallTestPluginContextInput struct{}
 type MustInstallTestPluginOutput struct{}
 
+var InputsForm kit.Form = kit.Form{
+	"template_id": {
+		"attr1": "val1",
+		"attr2": "val2",
+	},
+	"task_name": {
+		"attr3": kit.F{
+			"sub_attr3": "val3",
+		},
+	},
+}
+
 func TestMustInstall(t *testing.T) {
 	clearHub()
 	var success_cases = []struct {
@@ -151,16 +201,18 @@ func TestMustInstall(t *testing.T) {
 		inputs        interface{}
 		contextInputs interface{}
 		outputs       interface{}
+		inputsForm    kit.Form
 	}{
-		{&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil},
-		{&MustInstallTestPlugin{version: "1.0.1"}, MustInstallTestPluginInput{}, nil, nil},
-		{&MustInstallTestPlugin{version: "1.0.2"}, nil, MustInstallTestPluginContextInput{}, nil},
-		{&MustInstallTestPlugin{version: "1.0.3"}, nil, nil, MustInstallTestPluginOutput{}},
-		{&MustInstallTestPlugin{version: "1.0.4"}, MustInstallTestPluginInput{}, MustInstallTestPluginContextInput{}, MustInstallTestPluginOutput{}},
+		{&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, nil},
+		{&MustInstallTestPlugin{version: "1.0.1"}, MustInstallTestPluginInput{}, nil, nil, nil},
+		{&MustInstallTestPlugin{version: "1.0.2"}, nil, MustInstallTestPluginContextInput{}, nil, nil},
+		{&MustInstallTestPlugin{version: "1.0.3"}, nil, nil, MustInstallTestPluginOutput{}, nil},
+		{&MustInstallTestPlugin{version: "1.0.4"}, MustInstallTestPluginInput{}, MustInstallTestPluginContextInput{}, MustInstallTestPluginOutput{}, nil},
+		{&MustInstallTestPlugin{version: "1.0.5"}, MustInstallTestPluginInput{}, MustInstallTestPluginContextInput{}, MustInstallTestPluginOutput{}, InputsForm},
 	}
 
 	for _, c := range success_cases {
-		assert.NotPanics(t, func() { MustInstall(c.plugin, c.inputs, c.contextInputs, c.outputs) }, "success case %v failed", c)
+		assert.NotPanics(t, func() { MustInstall(c.plugin, c.inputs, c.contextInputs, c.outputs, c.inputsForm) }, "success case %v failed", c)
 	}
 
 	var panic_cases = []struct {
@@ -174,16 +226,16 @@ func TestMustInstall(t *testing.T) {
 	}
 
 	for _, c := range panic_cases {
-		assert.Panics(t, func() { MustInstall(c.plugin, c.inputs, c.contextInputs, c.outputs) }, "panic case %v failed", c)
+		assert.Panics(t, func() { MustInstall(c.plugin, c.inputs, c.contextInputs, c.outputs, nil) }, "panic case %v failed", c)
 	}
 }
 
 func TestGetPluginVersions(t *testing.T) {
 	clearHub()
-	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil)
-	MustInstall(&MustInstallTestPlugin{version: "1.0.1"}, nil, nil, nil)
-	MustInstall(&MustInstallTestPlugin{version: "1.0.2"}, nil, nil, nil)
-	MustInstall(&MustInstallTestPlugin{version: "1.0.3"}, nil, nil, nil)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, nil)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.1"}, nil, nil, nil, nil)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.2"}, nil, nil, nil, nil)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.3"}, nil, nil, nil, nil)
 	versions := GetPluginVersions()
 	assert.Equal(t, []string{"1.0.3", "1.0.2", "1.0.1", "1.0.0"}, versions)
 }
@@ -194,7 +246,7 @@ func TestGetPluginDetail(t *testing.T) {
 	assert.Nil(t, meta)
 	assert.NotNil(t, err)
 
-	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, nil)
 	meta, err = GetPluginDetail("1.0.0")
 	assert.Nil(t, err)
 	assert.NotNil(t, meta)
@@ -206,7 +258,7 @@ func TestGetPlugin(t *testing.T) {
 	assert.Nil(t, plugin)
 	assert.NotNil(t, err)
 
-	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, nil)
 	plugin, err = GetPlugin("1.0.0")
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin)
