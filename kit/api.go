@@ -13,10 +13,10 @@ package kit
 
 import (
 	beego "github.com/beego/beego/v2/server/web"
-	"github.com/homholueng/beego-runtime/conf"
 
 	"encoding/json"
 
+	"github.com/homholueng/bk-plugin-framework-go/conf"
 	"github.com/homholueng/bk-plugin-framework-go/constants"
 )
 
