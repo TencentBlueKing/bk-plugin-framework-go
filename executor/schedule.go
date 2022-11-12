@@ -12,10 +12,10 @@ package executor
 import (
 	log "github.com/sirupsen/logrus"
 
-	"github.com/homholueng/bk-plugin-framework-go/constants"
-	"github.com/homholueng/bk-plugin-framework-go/hub"
-	"github.com/homholueng/bk-plugin-framework-go/kit"
-	"github.com/homholueng/bk-plugin-framework-go/runtime"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/hub"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/kit"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/runtime"
 
 	"github.com/pkg/errors"
 )
