@@ -15,7 +15,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/homholueng/bk-plugin-framework-go/constants"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

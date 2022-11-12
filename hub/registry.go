@@ -22,7 +22,7 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/homholueng/bk-plugin-framework-go/kit"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/kit"
 
 	"github.com/alecthomas/jsonschema"
 )

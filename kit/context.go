@@ -14,8 +14,8 @@ package kit
 import (
 	"time"
 
-	"github.com/homholueng/bk-plugin-framework-go/constants"
-	"github.com/homholueng/bk-plugin-framework-go/runtime"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/runtime"
 	log "github.com/sirupsen/logrus"
 )
 

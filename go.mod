@@ -1,4 +1,4 @@
-module github.com/homholueng/bk-plugin-framework-go
+module github.com/TencentBlueKing/bk-plugin-framework-go
 
 go 1.17
 
