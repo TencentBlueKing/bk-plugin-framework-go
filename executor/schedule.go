@@ -49,6 +49,7 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 			logger.Errorf("set fail after execute err: %v\n", setErr)
 			return errors.Wrap(errors.Wrap(err, setErr.Error()), "SetFail after Execute error")
 		}
+		return err
 	}
 
 	// no poll request, execute success
