@@ -63,7 +63,6 @@ func (t *MetaTestPlugin) Execute(c *kit.Context) error {
 
 func TestPluginDetailPlugin(t *testing.T) {
 	plugin := MetaTestPlugin{}
-	inputsSchema := []byte("{\"inputsSchema\": 1}")
 	contextInputsSchema := []byte("{\"contextInputsSchema\": 2}")
 	outputsSchema := []byte("{\"outputsSchema\": 3}")
 	inputsSchemaJSON := map[string]interface{}{"inputsSchema": 1}
@@ -72,7 +71,6 @@ func TestPluginDetailPlugin(t *testing.T) {
 
 	detail := PluginDetail{
 		plugin:                  &plugin,
-		inputsSchema:            inputsSchema,
 		contextInputsSchema:     contextInputsSchema,
 		outputsSchema:           outputsSchema,
 		inputsSchemaJSON:        inputsSchemaJSON,
@@ -81,7 +79,6 @@ func TestPluginDetailPlugin(t *testing.T) {
 	}
 
 	assert.Equal(t, detail.Plugin(), &plugin)
-	assert.Equal(t, detail.InputsSchema(), inputsSchema)
 	assert.Equal(t, detail.ContextInputsSchema(), contextInputsSchema)
 	assert.Equal(t, detail.OutputsSchema(), outputsSchema)
 	assert.Equal(t, detail.InputsSchemaJSON(), inputsSchemaJSON)
@@ -196,23 +193,27 @@ var InputsForm kit.Form = kit.Form{
 
 func TestMustInstall(t *testing.T) {
 	clearHub()
+
+	jsonData, _ := json.Marshal(map[string]string{"1": "2"})
+	jsonBytes := []byte(jsonData)
+
 	var success_cases = []struct {
 		plugin        *MustInstallTestPlugin
 		inputs        interface{}
 		contextInputs interface{}
 		outputs       interface{}
-		inputsForm    kit.Form
+		inputsForm    []byte
 	}{
-		{&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, nil},
-		{&MustInstallTestPlugin{version: "1.0.1"}, MustInstallTestPluginInput{}, nil, nil, nil},
-		{&MustInstallTestPlugin{version: "1.0.2"}, nil, MustInstallTestPluginContextInput{}, nil, nil},
-		{&MustInstallTestPlugin{version: "1.0.3"}, nil, nil, MustInstallTestPluginOutput{}, nil},
-		{&MustInstallTestPlugin{version: "1.0.4"}, MustInstallTestPluginInput{}, MustInstallTestPluginContextInput{}, MustInstallTestPluginOutput{}, nil},
-		{&MustInstallTestPlugin{version: "1.0.5"}, MustInstallTestPluginInput{}, MustInstallTestPluginContextInput{}, MustInstallTestPluginOutput{}, InputsForm},
+		{&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, jsonBytes},
+		{&MustInstallTestPlugin{version: "1.0.1"}, MustInstallTestPluginInput{}, nil, nil, jsonBytes},
+		{&MustInstallTestPlugin{version: "1.0.2"}, nil, MustInstallTestPluginContextInput{}, nil, jsonBytes},
+		{&MustInstallTestPlugin{version: "1.0.3"}, nil, nil, MustInstallTestPluginOutput{}, jsonBytes},
+		{&MustInstallTestPlugin{version: "1.0.4"}, MustInstallTestPluginInput{}, MustInstallTestPluginContextInput{}, MustInstallTestPluginOutput{}, jsonBytes},
+		{&MustInstallTestPlugin{version: "1.0.5"}, MustInstallTestPluginInput{}, MustInstallTestPluginContextInput{}, MustInstallTestPluginOutput{}, jsonBytes},
 	}
 
 	for _, c := range success_cases {
-		assert.NotPanics(t, func() { MustInstall(c.plugin, c.inputs, c.contextInputs, c.outputs, c.inputsForm) }, "success case %v failed", c)
+		assert.NotPanics(t, func() { MustInstall(c.plugin, c.contextInputs, c.outputs, c.inputsForm) }, "success case %v failed", c)
 	}
 
 	var panic_cases = []struct {
@@ -226,27 +227,31 @@ func TestMustInstall(t *testing.T) {
 	}
 
 	for _, c := range panic_cases {
-		assert.Panics(t, func() { MustInstall(c.plugin, c.inputs, c.contextInputs, c.outputs, nil) }, "panic case %v failed", c)
+		assert.Panics(t, func() { MustInstall(c.plugin, c.contextInputs, c.outputs, nil) }, "panic case %v failed", c)
 	}
 }
 
 func TestGetPluginVersions(t *testing.T) {
 	clearHub()
-	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, nil)
-	MustInstall(&MustInstallTestPlugin{version: "1.0.1"}, nil, nil, nil, nil)
-	MustInstall(&MustInstallTestPlugin{version: "1.0.2"}, nil, nil, nil, nil)
-	MustInstall(&MustInstallTestPlugin{version: "1.0.3"}, nil, nil, nil, nil)
+	jsonData, _ := json.Marshal(map[string]string{"1": "2"})
+	jsonBytes := []byte(jsonData)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, jsonBytes)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.1"}, nil, nil, jsonBytes)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.2"}, nil, nil, jsonBytes)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.3"}, nil, nil, jsonBytes)
 	versions := GetPluginVersions()
 	assert.Equal(t, []string{"1.0.3", "1.0.2", "1.0.1", "1.0.0"}, versions)
 }
 
 func TestGetPluginDetail(t *testing.T) {
 	clearHub()
+	jsonData, _ := json.Marshal(map[string]string{"1": "2"})
+	jsonBytes := []byte(jsonData)
 	meta, err := GetPluginDetail("not exist version")
 	assert.Nil(t, meta)
 	assert.NotNil(t, err)
 
-	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, nil)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, jsonBytes)
 	meta, err = GetPluginDetail("1.0.0")
 	assert.Nil(t, err)
 	assert.NotNil(t, meta)
@@ -257,8 +262,9 @@ func TestGetPlugin(t *testing.T) {
 	plugin, err := GetPlugin("not exist version")
 	assert.Nil(t, plugin)
 	assert.NotNil(t, err)
-
-	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, nil, nil)
+	jsonData, _ := json.Marshal(map[string]string{"1": "2"})
+	jsonBytes := []byte(jsonData)
+	MustInstall(&MustInstallTestPlugin{version: "1.0.0"}, nil, nil, jsonBytes)
 	plugin, err = GetPlugin("1.0.0")
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin)
