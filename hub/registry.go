@@ -44,7 +44,6 @@ func clearHub() {
 // A PluginDetail store the detail data of specific plugin version.
 type PluginDetail struct {
 	plugin                  kit.Plugin
-	inputsSchema            []byte
 	contextInputsSchema     []byte
 	outputsSchema           []byte
 	inputsSchemaJSON        map[string]interface{}
@@ -58,9 +57,6 @@ func (p *PluginDetail) Plugin() kit.Plugin {
 }
 
 // InputsSchema returns the plugin inputs json schema.
-func (p *PluginDetail) InputsSchema() []byte {
-	return p.inputsSchema
-}
 
 // ContextInputsSchema returns the plugin context inputs json schema.
 func (p *PluginDetail) ContextInputsSchema() []byte {
@@ -145,7 +141,7 @@ func reflectJSONSchema(object interface{}, extraAttrs map[string]map[string]inte
 // do not have outputs.
 //
 // The inputsForm is json schema form for inputs
-func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, outputs interface{}, inputsForm kit.Form) {
+func MustInstall(p kit.Plugin, contextInputs interface{}, outputs interface{}, InputsForm []byte) {
 	// versionw validation
 	v := p.Version()
 	if !versionRe.MatchString(v) {
@@ -154,12 +150,6 @@ func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, ou
 
 	if _, found := hub[v]; found {
 		panic(fmt.Errorf("version %v already been installed\n", v))
-	}
-
-	// generate inputs schema
-	inputsSchema, inputsSchemaJSON, err := reflectJSONSchema(inputs, inputsForm)
-	if err != nil {
-		panic(err)
 	}
 
 	// generate context inputs schema
@@ -174,9 +164,14 @@ func MustInstall(p kit.Plugin, inputs interface{}, contextInputs interface{}, ou
 		panic(err)
 	}
 
+	var inputsSchemaJSON = make(map[string]interface{})
+	err = json.Unmarshal(InputsForm, &inputsSchemaJSON)
+	if err != nil {
+		panic(err)
+	}
+
 	hub[v] = &PluginDetail{
 		plugin:                  p,
-		inputsSchema:            inputsSchema,
 		contextInputsSchema:     contextInputsSchema,
 		outputsSchema:           outputsSchema,
 		inputsSchemaJSON:        inputsSchemaJSON,
