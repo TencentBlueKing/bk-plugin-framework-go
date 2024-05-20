@@ -1,0 +1,14 @@
+spec_version: 2
+modules:
+  default:
+    language: go
+    is_default: true
+    processes:
+      web:
+        command: {{cookiecutter.project_name}} server
+      worker:
+        command: {{cookiecutter.project_name}} worker
+    services:
+      - name: mysql
+      - name: rabbitmq
+      - name: redis

@@ -1,0 +1,6 @@
+{
+  "project_name": "my_plugin",
+  "app_code": "the app code of plugin saas",
+  "plugin_desc": "the description of this plugin",
+  "init_apigw_maintainer": "admin"
+}

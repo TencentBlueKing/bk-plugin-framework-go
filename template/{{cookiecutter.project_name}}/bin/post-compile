@@ -1,0 +1,15 @@
+#!/bin/bash
+env
+
+export PATH=$PATH:$GOROOT/bin/
+
+go install github.com/beego/bee/v2@v2.0.4
+
+if [ $GCS_MYSQL_NAME ]; then
+    bee migrate -conn "${GCS_MYSQL_USER}:${GCS_MYSQL_PASSWORD}@tcp(${GCS_MYSQL_HOST}:${GCS_MYSQL_PORT})/${GCS_MYSQL_NAME}"
+else
+    bee migrate -conn "${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/${MYSQL_NAME}"
+fi
+
+{{cookiecutter.project_name}} collectstatics
+{{cookiecutter.project_name}} syncapigw

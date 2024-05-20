@@ -1,0 +1,35 @@
+{
+  "title": "样例JsonSchema",
+  "description": "样例JsonSchema",
+  "type": "object",
+  "properties": {
+    "template_id": {
+      "type": "number",
+      "title": "模板 ID",
+      "default": 2,
+      "ui:component": {
+        "name": "bk-input",
+        "props": {
+          "type": "number"
+        }
+      },
+      "ui:props": {
+        "desc": "在对应业务上执行脚本",
+        "visible": true,
+        "className": "custom-style"
+      },
+      "ui:rules": [
+        "required"
+      ]
+    },
+    "task_name": {
+      "type": "string",
+      "title": "任务名",
+      "default": "",
+      "ui:component": {
+        "name": "bk-input",
+        "props": {}
+      }
+    }
+  }
+}

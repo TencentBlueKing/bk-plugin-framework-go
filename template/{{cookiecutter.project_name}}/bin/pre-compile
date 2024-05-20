@@ -1,0 +1,10 @@
+#!/bin/bash
+# add pre compile bash here
+
+# set compile flags
+mkdir -p /tmp/environment/
+# echo aaa > /tmp/environment/GO_LINKER_SYMBOL
+# echo bbb > /tmp/environment/GO_LINKER_VALUE
+# echo "000 111" > /tmp/environment/GO_INSTLL_ARGS
+
+echo true > /tmp/environment/GO_INSTALL_TOOLS_IN_IMAGE
