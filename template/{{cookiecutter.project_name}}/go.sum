@@ -50,6 +50,8 @@ github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWX
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/TencentBlueKing/beego-runtime v0.5.8 h1:edTC/yanQ4zJMcJOYAQWDQwS/cgj30iWVIURur1DEDw=
 github.com/TencentBlueKing/beego-runtime v0.5.8/go.mod h1:eMqvHBn7+q9a9mjCd1ki5ty4s4+qz2b5RkLmlqA1Oo8=
+github.com/TencentBlueKing/beego-runtime v0.6.0 h1:hObbCVykba34DgUl5/NtV3lDFAPYul/F1i/quA/KtSk=
+github.com/TencentBlueKing/beego-runtime v0.6.0/go.mod h1:eMqvHBn7+q9a9mjCd1ki5ty4s4+qz2b5RkLmlqA1Oo8=
 github.com/TencentBlueKing/bk-apigateway-sdks v0.1.16 h1:HKRqW/ArEJFi9E79CulIRpsYPH7dVpO7HORKSI3WP/Q=
 github.com/TencentBlueKing/bk-apigateway-sdks v0.1.16/go.mod h1:AUysnGxqnBhVcw7Jp864M8J9EV0GOngIqW9G/QituHg=
 github.com/TencentBlueKing/bk-plugin-framework-go v0.5.0 h1:MRNdzBwPsU8cc0033Q/IoJJSJyrSNK53rByZ7RJVFXw=

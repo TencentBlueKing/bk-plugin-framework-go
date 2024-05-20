@@ -3,9 +3,8 @@ module {{cookiecutter.project_name}}
 
 go 1.19
 
-
 require (
-	github.com/TencentBlueKing/beego-runtime v0.5.8
+	github.com/TencentBlueKing/beego-runtime v0.6.0
 	github.com/TencentBlueKing/bk-plugin-framework-go v0.5.0
 	github.com/beego/beego/v2 v2.0.2
 )
@@ -65,7 +64,6 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/smartwalle/pongo2render v1.0.1 // indirect
 	github.com/spf13/afero v1.1.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
