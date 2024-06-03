@@ -1,7 +1,7 @@
 package v100
 
 import (
-	_ "embed"
+	_ "embed" // import go:embed
 	"fmt"
 	"log"
 
