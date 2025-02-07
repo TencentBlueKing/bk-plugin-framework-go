@@ -19,7 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// A Context store all context information and data for once plugin execution.
+// Context store all context information and data for once plugin execution.
 type Context struct {
 	traceID      string
 	state        constants.State
@@ -70,7 +70,7 @@ func (c *Context) TraceID() string {
 	return c.traceID
 }
 
-// TraceID returns current state of once execution.
+// State returns current state of once execution.
 func (c *Context) State() constants.State {
 	return c.state
 }
@@ -113,13 +113,13 @@ func (c *Context) Write(v interface{}) error {
 	return c.store.Write(c.traceID, v)
 }
 
-// Read parses context data data and store the result
+// Read parses context data and store the result
 // in the value pointed to by v.
 func (c *Context) Read(v interface{}) error {
 	return c.store.Read(c.traceID, v)
 }
 
-// Write will store the value pointed to by v to outputs.
+// WriteOutputs will store the value pointed to by v to outputs.
 func (c *Context) WriteOutputs(v interface{}) error {
 	return c.outputsStore.Write(c.traceID, v)
 }

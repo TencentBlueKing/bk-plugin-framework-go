@@ -41,7 +41,7 @@ func clearHub() {
 	hub = make(map[string]*PluginDetail)
 }
 
-// A PluginDetail store the detail data of specific plugin version.
+// PluginDetail store the detail data of specific plugin version.
 type PluginDetail struct {
 	plugin                  kit.Plugin
 	contextInputsSchema     []byte
@@ -141,7 +141,7 @@ func reflectJSONSchema(object interface{}, extraAttrs map[string]map[string]inte
 // do not have outputs.
 //
 // The inputsForm is json schema form for inputs
-func MustInstall(p kit.Plugin, contextInputs interface{}, outputs interface{}, InputsForm []byte) {
+func MustInstall(p kit.Plugin, contextInputs interface{}, outputs interface{}, inputsForm []byte) {
 	// versionw validation
 	v := p.Version()
 	if !versionRe.MatchString(v) {
@@ -165,7 +165,7 @@ func MustInstall(p kit.Plugin, contextInputs interface{}, outputs interface{}, I
 	}
 
 	var inputsSchemaJSON = make(map[string]interface{})
-	err = json.Unmarshal(InputsForm, &inputsSchemaJSON)
+	err = json.Unmarshal(inputsForm, &inputsSchemaJSON)
 	if err != nil {
 		panic(err)
 	}
@@ -199,7 +199,7 @@ func GetPluginDetail(v string) (*PluginDetail, error) {
 	}
 }
 
-// GetPluginDetail returns Plugin of specific plugin version.
+// GetPlugin returns Plugin of specific plugin version.
 func GetPlugin(v string) (kit.Plugin, error) {
 	meta, err := GetPluginDetail(v)
 	if err != nil {
