@@ -40,7 +40,15 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 	}
 
 	// init context
-	c := kit.NewContext(traceID, constants.StatePoll, invokeCount, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
+	c := kit.NewContext(
+		traceID,
+		constants.StatePoll,
+		invokeCount,
+		reader,
+		runtime.GetContextStore(),
+		runtime.GetOutputsStore(),
+		logger,
+	)
 
 	// execute
 	if err := p.Execute(c); err != nil {

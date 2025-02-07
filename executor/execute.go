@@ -37,7 +37,15 @@ func Execute(traceID string, version string, reader runtime.ContextReader, runti
 	}
 
 	// init context
-	c := kit.NewContext(traceID, constants.StateEmpty, 1, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
+	c := kit.NewContext(
+		traceID,
+		constants.StateEmpty,
+		1,
+		reader,
+		runtime.GetContextStore(),
+		runtime.GetOutputsStore(),
+		logger,
+	)
 
 	// execute
 	if err := p.Execute(c); err != nil {
