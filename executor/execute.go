@@ -17,7 +17,8 @@ import (
 	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
 	"github.com/TencentBlueKing/bk-plugin-framework-go/hub"
 	"github.com/TencentBlueKing/bk-plugin-framework-go/kit"
-	"github.com/TencentBlueKing/bk-plugin-framework-go/runtime"
+	pluginruntime "github.com/TencentBlueKing/bk-plugin-framework-go/runtime"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,7 +31,7 @@ import (
 // The reader set the read source of inputs.
 //
 // The runtime set the execute runtime use in execute action.
-func Execute(traceID string, version string, reader runtime.ContextReader, runtime runtime.PluginExecuteRuntime, logger *log.Entry) (state constants.State, err error) {
+func Execute(traceID string, version string, reader pluginruntime.ContextReader, runtime pluginruntime.PluginExecuteRuntime, logger *log.Entry) (state constants.State, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("plugin execute panic: %v", r)
@@ -53,6 +54,18 @@ func Execute(traceID string, version string, reader runtime.ContextReader, runti
 	if err := p.Execute(c); err != nil {
 		logger.Errorf("plugin execute return err: %v\n", err)
 		return constants.StateFail, err
+	}
+
+	if c.WaitingCallback() {
+		callbackRuntime, ok := runtime.(pluginruntime.PluginCallbackRuntime)
+		if !ok {
+			return constants.StateFail, errors.New("runtime does not support callback state")
+		}
+		if err := callbackRuntime.SetCallback(traceID, version, c.InvokeCount(), c.CallbackTimeout()); err != nil {
+			logger.Errorf("execute success but set callback err: %v\n", err)
+			return constants.StateFail, err
+		}
+		return constants.StateCallback, nil
 	}
 
 	// no poll request, execute success

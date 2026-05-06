@@ -25,6 +25,12 @@ type ContextReader interface {
 	ReadContextInputs(v interface{}) error
 }
 
+// CallbackReader is an optional interface implemented by runtimes that support
+// reading callback payloads when plugin execution resumes from StateCallback.
+type CallbackReader interface {
+	ReadCallback(v interface{}) error
+}
+
 // ObjectStore is the interface that wraps the basic store operate method.
 //
 // Write should store the value pointed to by v with traceID
@@ -49,6 +55,12 @@ type PluginExecuteRuntime interface {
 	GetOutputsStore() ObjectStore
 	GetContextStore() ObjectStore
 	SetPoll(traceID string, version string, invokeCount int, after time.Duration) error
+}
+
+// PluginCallbackRuntime is an optional interface implemented by runtimes that
+// support StateCallback.
+type PluginCallbackRuntime interface {
+	SetCallback(traceID string, version string, invokeCount int, timeout time.Duration) error
 }
 
 // PluginExecuteRuntime is the interface that wraps the basic runtime method

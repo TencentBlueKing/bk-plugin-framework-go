@@ -36,9 +36,28 @@ var versionRe = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9][a-z0-9]*$`)
 // hub will store all installed plugin detail.
 var hub = map[string]*PluginDetail{}
 
+var options = Options{}
+
+// Options stores process-level plugin framework options.
+type Options struct {
+	AllowScope           []string
+	EnablePluginCallback bool
+}
+
+// Configure sets process-level plugin framework options.
+func Configure(opts Options) {
+	options = opts
+}
+
+// GetOptions returns process-level plugin framework options.
+func GetOptions() Options {
+	return options
+}
+
 // clearHub will remove all version of current bk-plugin.
 func clearHub() {
 	hub = make(map[string]*PluginDetail)
+	options = Options{}
 }
 
 // A PluginDetail store the detail data of specific plugin version.

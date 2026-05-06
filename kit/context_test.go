@@ -43,6 +43,11 @@ func (r *MockContextReader) ReadContextInputs(v interface{}) error {
 	return nil
 }
 
+func (r *MockContextReader) ReadCallback(v interface{}) error {
+	r.Called(v)
+	return nil
+}
+
 type MockStore struct {
 	mock.Mock
 }
@@ -85,13 +90,21 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, c.State(), constants.StateEmpty)
 	assert.Equal(t, c.InvokeCount(), 1)
 	assert.Equal(t, c.PollInterval(), 0*time.Second)
+	assert.Equal(t, c.CallbackTimeout(), 0*time.Second)
 	assert.Equal(t, c.WaitingPoll(), false)
+	assert.Equal(t, c.WaitingCallback(), false)
 
 	// WaitPoll test
 	assert.False(t, c.WaitingPoll())
 	c.WaitPoll(5 * time.Second)
 	assert.Equal(t, c.pollInterval, 5*time.Second)
 	assert.True(t, c.WaitingPoll())
+
+	// WaitCallback test
+	assert.False(t, c.WaitingCallback())
+	c.WaitCallback(30 * time.Minute)
+	assert.Equal(t, c.callbackTimeout, 30*time.Minute)
+	assert.True(t, c.WaitingCallback())
 
 	// Read test
 	c.ReadInputs(&v)
@@ -100,6 +113,10 @@ func TestContext(t *testing.T) {
 	// ReadContext test
 	c.ReadContextInputs(&v)
 	reader.AssertCalled(t, "ReadContextInputs", &v)
+
+	// ReadCallback test
+	c.ReadCallback(&v)
+	reader.AssertCalled(t, "ReadCallback", &v)
 
 	// Write test
 	c.Write(&v)
@@ -139,7 +156,9 @@ func TestNewContext(t *testing.T) {
 	assert.Equal(t, c.traceID, traceID)
 	assert.Equal(t, c.state, state)
 	assert.Equal(t, c.pollInterval, 0*time.Second)
+	assert.Equal(t, c.callbackTimeout, 0*time.Second)
 	assert.Equal(t, c.waitingPoll, false)
+	assert.Equal(t, c.waitingCallback, false)
 	assert.Equal(t, c.invokeCount, invokeCount)
 	assert.Equal(t, c.reader, &reader)
 	assert.Equal(t, c.store, &store)

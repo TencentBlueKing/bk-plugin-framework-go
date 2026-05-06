@@ -17,7 +17,7 @@ import (
 	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
 	"github.com/TencentBlueKing/bk-plugin-framework-go/hub"
 	"github.com/TencentBlueKing/bk-plugin-framework-go/kit"
-	"github.com/TencentBlueKing/bk-plugin-framework-go/runtime"
+	pluginruntime "github.com/TencentBlueKing/bk-plugin-framework-go/runtime"
 
 	"github.com/pkg/errors"
 )
@@ -31,7 +31,12 @@ import (
 // The reader set the read source of inputs.
 //
 // The runtime set the execute runtime use in schedule action.
-func Schedule(traceID string, version string, invokeCount int, reader runtime.ContextReader, runtime runtime.PluginScheduleExecuteRuntime, logger *log.Entry) (err error) {
+func Schedule(traceID string, version string, invokeCount int, reader pluginruntime.ContextReader, runtime pluginruntime.PluginScheduleExecuteRuntime, logger *log.Entry) (err error) {
+	return ScheduleWithState(traceID, version, invokeCount, constants.StatePoll, reader, runtime, logger)
+}
+
+// ScheduleWithState define the schedule action for a specific waiting state.
+func ScheduleWithState(traceID string, version string, invokeCount int, state constants.State, reader pluginruntime.ContextReader, runtime pluginruntime.PluginScheduleExecuteRuntime, logger *log.Entry) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			panicErr := fmt.Errorf("plugin schedule panic: %v", r)
@@ -56,7 +61,7 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 	}
 
 	// init context
-	c := kit.NewContext(traceID, constants.StatePoll, invokeCount, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
+	c := kit.NewContext(traceID, state, invokeCount, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
 
 	// execute
 	if err := p.Execute(c); err != nil {
@@ -66,6 +71,25 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 			return errors.Wrap(errors.Wrap(err, setErr.Error()), "SetFail after Execute error")
 		}
 		return err
+	}
+
+	if c.WaitingCallback() {
+		callbackRuntime, ok := runtime.(pluginruntime.PluginCallbackRuntime)
+		if !ok {
+			err := errors.New("runtime does not support callback state")
+			if setErr := runtime.SetFail(traceID, err); setErr != nil {
+				return errors.Wrap(errors.Wrap(err, setErr.Error()), "SetFail after SetCallback unsupported")
+			}
+			return err
+		}
+		if err := callbackRuntime.SetCallback(traceID, version, c.InvokeCount(), c.CallbackTimeout()); err != nil {
+			logger.Errorf("plugin execute success but set callback err: %v\n", err)
+			if setErr := runtime.SetFail(traceID, err); setErr != nil {
+				return errors.Wrap(errors.Wrap(err, setErr.Error()), "SetFail after SetCallback error")
+			}
+			return err
+		}
+		return nil
 	}
 
 	// no poll request, execute success

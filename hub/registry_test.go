@@ -326,3 +326,16 @@ func TestGetPlugin(t *testing.T) {
 	assert.NotNil(t, plugin)
 	assert.Equal(t, plugin.Version(), "1.0.0")
 }
+
+func TestConfigureOptions(t *testing.T) {
+	clearHub()
+
+	Configure(Options{
+		AllowScope:           []string{"bk_sops", "bk_itsm"},
+		EnablePluginCallback: true,
+	})
+
+	opts := GetOptions()
+	assert.Equal(t, []string{"bk_sops", "bk_itsm"}, opts.AllowScope)
+	assert.True(t, opts.EnablePluginCallback)
+}

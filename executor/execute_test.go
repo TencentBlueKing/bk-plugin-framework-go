@@ -45,9 +45,11 @@ func (s testStore) Read(traceID string, v interface{}) error {
 
 type testRuntime struct {
 	pollCalled    bool
+	callbackCalled bool
 	failCalled    bool
 	successCalled bool
 	pollErr       error
+	callbackErr   error
 	failErr       error
 }
 
@@ -62,6 +64,11 @@ func (r *testRuntime) GetContextStore() runtime.ObjectStore {
 func (r *testRuntime) SetPoll(traceID string, version string, invokeCount int, after time.Duration) error {
 	r.pollCalled = true
 	return r.pollErr
+}
+
+func (r *testRuntime) SetCallback(traceID string, version string, invokeCount int, timeout time.Duration) error {
+	r.callbackCalled = true
+	return r.callbackErr
 }
 
 func (r *testRuntime) SetFail(traceID string, err error) error {
@@ -92,6 +99,17 @@ func (p waitPollPlugin) Version() string { return p.version }
 func (p waitPollPlugin) Desc() string    { return "wait poll plugin" }
 func (p waitPollPlugin) Execute(c *kit.Context) error {
 	c.WaitPoll(time.Second)
+	return nil
+}
+
+type waitCallbackPlugin struct {
+	version string
+}
+
+func (p waitCallbackPlugin) Version() string { return p.version }
+func (p waitCallbackPlugin) Desc() string    { return "wait callback plugin" }
+func (p waitCallbackPlugin) Execute(c *kit.Context) error {
+	c.WaitCallback(time.Hour)
 	return nil
 }
 
@@ -166,4 +184,25 @@ func TestScheduleSetPollErrorReturnsOriginalAfterSetFail(t *testing.T) {
 	assert.EqualError(t, err, "poll write failed")
 	assert.True(t, rt.pollCalled)
 	assert.True(t, rt.failCalled)
+}
+
+func TestExecuteSetCallbackSuccess(t *testing.T) {
+	hub.MustInstallV2(waitCallbackPlugin{version: "8.0.4"}, hub.PluginSpec{Form: []byte(`{}`)})
+	rt := &testRuntime{}
+
+	state, err := Execute("trace-callback", "8.0.4", testReader{}, rt, log.WithFields(log.Fields{}))
+
+	assert.NoError(t, err)
+	assert.Equal(t, constants.StateCallback, state)
+	assert.True(t, rt.callbackCalled)
+}
+
+func TestScheduleWithCallbackStateSetCallbackSuccess(t *testing.T) {
+	hub.MustInstallV2(waitCallbackPlugin{version: "8.0.5"}, hub.PluginSpec{Form: []byte(`{}`)})
+	rt := &testRuntime{}
+
+	err := ScheduleWithState("trace-callback", "8.0.5", 2, constants.StateCallback, testReader{}, rt, log.WithFields(log.Fields{}))
+
+	assert.NoError(t, err)
+	assert.True(t, rt.callbackCalled)
 }

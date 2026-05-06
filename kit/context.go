@@ -12,6 +12,7 @@
 package kit
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
@@ -24,7 +25,9 @@ type Context struct {
 	traceID      string
 	state        constants.State
 	pollInterval time.Duration
+	callbackTimeout time.Duration
 	waitingPoll  bool
+	waitingCallback bool
 	invokeCount  int
 	reader       runtime.ContextReader
 	store        runtime.ObjectStore
@@ -85,6 +88,11 @@ func (c *Context) PollInterval() time.Duration {
 	return c.pollInterval
 }
 
+// CallbackTimeout returns max waiting duration for callback.
+func (c *Context) CallbackTimeout() time.Duration {
+	return c.callbackTimeout
+}
+
 // WaitPoll tells executor to execute plugin with poll state after duration.
 func (c *Context) WaitPoll(interval time.Duration) {
 	c.pollInterval = interval
@@ -94,6 +102,17 @@ func (c *Context) WaitPoll(interval time.Duration) {
 // WaitingPoll returns whether current execution should enter poll state.
 func (c *Context) WaitingPoll() bool {
 	return c.waitingPoll
+}
+
+// WaitCallback tells executor to pause plugin execution until callback arrives.
+func (c *Context) WaitCallback(timeout time.Duration) {
+	c.callbackTimeout = timeout
+	c.waitingCallback = true
+}
+
+// WaitingCallback returns whether current execution should enter callback state.
+func (c *Context) WaitingCallback() bool {
+	return c.waitingCallback
 }
 
 // ReadInputs parses inputs data and store the result
@@ -106,6 +125,15 @@ func (c *Context) ReadInputs(v interface{}) error {
 // in the value pointed to by v.
 func (c *Context) ReadContextInputs(v interface{}) error {
 	return c.reader.ReadContextInputs(v)
+}
+
+// ReadCallback parses callback data and store the result in the value pointed to by v.
+func (c *Context) ReadCallback(v interface{}) error {
+	reader, ok := c.reader.(runtime.CallbackReader)
+	if !ok {
+		return fmt.Errorf("callback payload is not available")
+	}
+	return reader.ReadCallback(v)
 }
 
 // Write will store the value pointed to by v to context data.
