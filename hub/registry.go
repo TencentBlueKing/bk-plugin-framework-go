@@ -44,11 +44,13 @@ func clearHub() {
 // A PluginDetail store the detail data of specific plugin version.
 type PluginDetail struct {
 	plugin                  kit.Plugin
+	inputsSchema            []byte
 	contextInputsSchema     []byte
 	outputsSchema           []byte
 	inputsSchemaJSON        map[string]interface{}
 	contextInputsSchemaJSON map[string]interface{}
 	outputsSchemaJSON       map[string]interface{}
+	formsRenderFormJSON     map[string]interface{}
 }
 
 // Plugin returns the Plugin instance.
@@ -57,6 +59,9 @@ func (p *PluginDetail) Plugin() kit.Plugin {
 }
 
 // InputsSchema returns the plugin inputs json schema.
+func (p *PluginDetail) InputsSchema() []byte {
+	return p.inputsSchema
+}
 
 // ContextInputsSchema returns the plugin context inputs json schema.
 func (p *PluginDetail) ContextInputsSchema() []byte {
@@ -81,6 +86,19 @@ func (p *PluginDetail) ContextInputsSchemaJSON() map[string]interface{} {
 // OutputsSchemaJSON returns the unmarshaled plugin outputs json schema.
 func (p *PluginDetail) OutputsSchemaJSON() map[string]interface{} {
 	return p.outputsSchemaJSON
+}
+
+// FormsRenderFormJSON returns the unmarshaled render form metadata.
+func (p *PluginDetail) FormsRenderFormJSON() map[string]interface{} {
+	return p.formsRenderFormJSON
+}
+
+// PluginSpec describes a plugin version with explicit schemas and form metadata.
+type PluginSpec struct {
+	Inputs        interface{}
+	ContextInputs interface{}
+	Outputs       interface{}
+	Form          []byte
 }
 
 // reflectJSONSchema returns the byte array and string map of object's json schema.
@@ -127,22 +145,8 @@ func reflectJSONSchema(object interface{}, extraAttrs map[string]map[string]inte
 	return objectSchema, objectSchemaJSON, nil
 }
 
-// MustInstall will install a version of plugin to hub.
-//
-// The p is the plugin will be installed.
-//
-// The inputs is inputs struct of this version, pass nil if this version
-// do not have inputs.
-//
-// The contextInputs is context inputs struct of this version, pass nil if this version
-// do not have context inputs.
-//
-// The outputs is outputs struct of this version, pass nil if this version
-// do not have outputs.
-//
-// The inputsForm is json schema form for inputs
-func MustInstall(p kit.Plugin, contextInputs interface{}, outputs interface{}, InputsForm []byte) {
-	// versionw validation
+func mustInstallDetail(p kit.Plugin, spec PluginSpec, legacyInputsFormAsSchema bool) {
+	// version validation
 	v := p.Version()
 	if !versionRe.MatchString(v) {
 		panic(fmt.Errorf("%s is not a valid plugin version\n", v))
@@ -152,32 +156,71 @@ func MustInstall(p kit.Plugin, contextInputs interface{}, outputs interface{}, I
 		panic(fmt.Errorf("version %v already been installed\n", v))
 	}
 
+	// generate inputs schema
+	inputsSchema, inputsSchemaJSON, err := reflectJSONSchema(spec.Inputs, nil)
+	if err != nil {
+		panic(err)
+	}
+
 	// generate context inputs schema
-	contextInputsSchema, contextInputsSchemaJSON, err := reflectJSONSchema(contextInputs, nil)
+	contextInputsSchema, contextInputsSchemaJSON, err := reflectJSONSchema(spec.ContextInputs, nil)
 	if err != nil {
 		panic(err)
 	}
 
 	// generate outputs schema
-	outputsSchema, outputsSchemaJSON, err := reflectJSONSchema(outputs, nil)
+	outputsSchema, outputsSchemaJSON, err := reflectJSONSchema(spec.Outputs, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	var inputsSchemaJSON = make(map[string]interface{})
-	err = json.Unmarshal(InputsForm, &inputsSchemaJSON)
-	if err != nil {
-		panic(err)
+	formsRenderFormJSON := make(map[string]interface{})
+	if len(spec.Form) > 0 {
+		err = json.Unmarshal(spec.Form, &formsRenderFormJSON)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if legacyInputsFormAsSchema {
+		inputsSchema = spec.Form
+		inputsSchemaJSON = formsRenderFormJSON
 	}
 
 	hub[v] = &PluginDetail{
 		plugin:                  p,
+		inputsSchema:            inputsSchema,
 		contextInputsSchema:     contextInputsSchema,
 		outputsSchema:           outputsSchema,
 		inputsSchemaJSON:        inputsSchemaJSON,
 		contextInputsSchemaJSON: contextInputsSchemaJSON,
 		outputsSchemaJSON:       outputsSchemaJSON,
+		formsRenderFormJSON:     formsRenderFormJSON,
 	}
+}
+
+// MustInstall will install a version of plugin to hub.
+//
+// The p is the plugin will be installed.
+//
+// The contextInputs is context inputs struct of this version, pass nil if this version
+// do not have context inputs.
+//
+// The outputs is outputs struct of this version, pass nil if this version
+// do not have outputs.
+//
+// The inputsForm is json schema form for inputs.
+func MustInstall(p kit.Plugin, contextInputs interface{}, outputs interface{}, InputsForm []byte) {
+	mustInstallDetail(p, PluginSpec{
+		ContextInputs: contextInputs,
+		Outputs:       outputs,
+		Form:          InputsForm,
+	}, true)
+}
+
+// MustInstallV2 installs a plugin version with explicit inputs, context inputs,
+// outputs, and render form metadata.
+func MustInstallV2(p kit.Plugin, spec PluginSpec) {
+	mustInstallDetail(p, spec, false)
 }
 
 // GetPluginVersions returns the versions of intalled plugin instance in new to old order.

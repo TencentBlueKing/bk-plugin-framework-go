@@ -63,27 +63,33 @@ func (t *MetaTestPlugin) Execute(c *kit.Context) error {
 
 func TestPluginDetailPlugin(t *testing.T) {
 	plugin := MetaTestPlugin{}
+	inputsSchema := []byte("{\"inputsSchema\": 1}")
 	contextInputsSchema := []byte("{\"contextInputsSchema\": 2}")
 	outputsSchema := []byte("{\"outputsSchema\": 3}")
 	inputsSchemaJSON := map[string]interface{}{"inputsSchema": 1}
 	contextInputsSchemaJSON := map[string]interface{}{"contextInputsSchema": 2}
 	outputsSchemaJSON := map[string]interface{}{"outputsSchema": 3}
+	formsRenderFormJSON := map[string]interface{}{"template_id": "render"}
 
 	detail := PluginDetail{
 		plugin:                  &plugin,
+		inputsSchema:            inputsSchema,
 		contextInputsSchema:     contextInputsSchema,
 		outputsSchema:           outputsSchema,
 		inputsSchemaJSON:        inputsSchemaJSON,
 		contextInputsSchemaJSON: contextInputsSchemaJSON,
 		outputsSchemaJSON:       outputsSchemaJSON,
+		formsRenderFormJSON:     formsRenderFormJSON,
 	}
 
 	assert.Equal(t, detail.Plugin(), &plugin)
+	assert.Equal(t, detail.InputsSchema(), inputsSchema)
 	assert.Equal(t, detail.ContextInputsSchema(), contextInputsSchema)
 	assert.Equal(t, detail.OutputsSchema(), outputsSchema)
 	assert.Equal(t, detail.InputsSchemaJSON(), inputsSchemaJSON)
 	assert.Equal(t, detail.ContextInputsSchemaJSON(), contextInputsSchemaJSON)
 	assert.Equal(t, detail.OutputsSchemaJSON(), outputsSchemaJSON)
+	assert.Equal(t, detail.FormsRenderFormJSON(), formsRenderFormJSON)
 }
 
 func TestReflectJSONSchema(t *testing.T) {
@@ -229,6 +235,56 @@ func TestMustInstall(t *testing.T) {
 	for _, c := range panic_cases {
 		assert.Panics(t, func() { MustInstall(c.plugin, c.contextInputs, c.outputs, nil) }, "panic case %v failed", c)
 	}
+}
+
+func TestMustInstallLegacyKeepsInputsFormAsInputsSchema(t *testing.T) {
+	clearHub()
+
+	inputsForm := []byte(`{"template_id":{"type":"int","required":true}}`)
+	MustInstall(&MustInstallTestPlugin{version: "2.0.0"}, MustInstallTestPluginContextInput{}, MustInstallTestPluginOutput{}, inputsForm)
+
+	detail, err := GetPluginDetail("2.0.0")
+	assert.Nil(t, err)
+	assert.Equal(t, map[string]interface{}{
+		"template_id": map[string]interface{}{
+			"type":     "int",
+			"required": true,
+		},
+	}, detail.InputsSchemaJSON())
+	assert.Equal(t, detail.FormsRenderFormJSON(), detail.InputsSchemaJSON())
+}
+
+func TestMustInstallV2StoresExplicitSchemasAndForm(t *testing.T) {
+	clearHub()
+
+	type Inputs struct {
+		TemplateID int    `json:"template_id"`
+		TaskName   string `json:"task_name"`
+	}
+	type ContextInputs struct {
+		BizID int `json:"bk_biz_id"`
+	}
+	type Outputs struct {
+		Result string `json:"result"`
+	}
+
+	form := []byte(`{"template_id":{"component":"input-number"},"task_name":{"component":"input"}}`)
+	MustInstallV2(&MustInstallTestPlugin{version: "2.1.0"}, PluginSpec{
+		Inputs:        Inputs{},
+		ContextInputs: ContextInputs{},
+		Outputs:       Outputs{},
+		Form:          form,
+	})
+
+	detail, err := GetPluginDetail("2.1.0")
+	assert.Nil(t, err)
+	assert.Contains(t, detail.InputsSchemaJSON()["properties"], "template_id")
+	assert.Contains(t, detail.ContextInputsSchemaJSON()["properties"], "bk_biz_id")
+	assert.Contains(t, detail.OutputsSchemaJSON()["properties"], "result")
+	assert.Equal(t, map[string]interface{}{
+		"template_id": map[string]interface{}{"component": "input-number"},
+		"task_name":   map[string]interface{}{"component": "input"},
+	}, detail.FormsRenderFormJSON())
 }
 
 func TestGetPluginVersions(t *testing.T) {
