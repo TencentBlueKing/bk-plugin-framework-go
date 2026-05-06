@@ -1,47 +1,46 @@
-# Blueapps-Based Go Plugin Runtime Refactor Design
+# 基于 blueapps-go 的 Go 插件运行时重构设计
 
-Date: 2026-05-06
+日期：2026-05-06
 
-## Background
+## 背景
 
-The current Go plugin framework is split across two practical concerns:
+当前 Go 插件框架实际由两部分组成：
 
-- `bk-plugin-framework-go` provides the plugin SDK concepts such as `kit.Plugin`, `kit.Context`, `hub.MustInstall`, and executor state transitions.
-- `beego-runtime` provides the web runtime, APIGW resources, worker process, storage, and Beego-based deployment entrypoint.
+- `bk-plugin-framework-go`：插件开发 SDK，提供 `kit.Plugin`、`kit.Context`、`hub.MustInstall`、`executor` 状态机等能力。
+- `beego-runtime`：插件运行时，提供 Web 路由、APIGW 资源、worker、存储、部署入口和 Beego 相关逻辑。
 
-The goal of this refactor is to retire `beego-runtime` and rebuild the Go plugin runtime on top of `github.com/TencentBlueKing/blueapps-go`, similar to how the Python plugin framework depends on the BlueKing application framework.
+这次重构的目标是废弃 `beego-runtime`，基于 `github.com/TencentBlueKing/blueapps-go` 重做 Go 插件运行时，让 Go 版本架构更接近 Python 版本的 `bk-plugin-framework` + `bk-plugin-runtime` 分层。
 
-The migration target is compatibility level B:
+迁移目标采用兼容级别 B：
 
-- Existing plugin business code should generally remain unchanged.
-- `main.go`, `go.mod`, and deployment configuration may require small changes.
-- Full source-level compatibility with every `beego-runtime` internal API is not required.
+- 插件业务代码尽量不改。
+- `main.go`、`go.mod`、`app_desc.yml` 等入口和部署配置允许少量调整。
+- 不承诺兼容所有 `beego-runtime` 内部包和未文档化行为。
 
-## Design Decision
+## 核心决策
 
-Use two Go modules:
+拆成两个 Go module：
 
 ```text
 bk-plugin-framework-go
 bk-plugin-runtime-go
 ```
 
-`bk-plugin-framework-go` remains the stable SDK and framework-neutral execution layer. It must not depend on `blueapps-go`.
+`bk-plugin-framework-go` 继续作为轻量、稳定的插件 SDK，不依赖 `blueapps-go`。
 
-`bk-plugin-runtime-go` is the new runtime module. It depends on `bk-plugin-framework-go` and `blueapps-go`, and provides the executable runtime entrypoint, HTTP protocol, APIGW synchronization, scheduler, storage implementation, and plugin API dispatch.
+`bk-plugin-runtime-go` 是新的运行时 module，依赖 `bk-plugin-framework-go` 和 `blueapps-go`，负责启动入口、HTTP 协议、APIGW 同步、调度 worker、存储实现和 plugin API dispatch。
 
-This mirrors the Python split:
+这个拆分的好处是：
 
-```text
-bk-plugin-framework   -> development SDK
-bk-plugin-runtime     -> BlueKing application runtime
-```
+- SDK 不被 Gin、GORM、Redis、APIGW、OTel 等运行时依赖污染。
+- blueapps-go 升级影响主要收敛在 runtime module 内部。
+- Go 版本和 Python 版本的分层模型保持一致。
 
-## Repository Responsibilities
+## 仓库职责
 
 ### bk-plugin-framework-go
 
-This module should remain small and stable:
+保持小而稳定：
 
 ```text
 bk-plugin-framework-go/
@@ -52,20 +51,20 @@ bk-plugin-framework-go/
   constants/
 ```
 
-Responsibilities:
+职责：
 
-- Define `kit.Plugin`.
-- Define `kit.Context`.
-- Register plugin versions through `hub`.
-- Generate and expose plugin metadata and schemas.
-- Execute plugin state transitions in `executor`.
-- Define framework-neutral runtime interfaces in `runtime`.
+- 定义 `kit.Plugin`。
+- 定义 `kit.Context`。
+- 通过 `hub` 注册插件版本。
+- 生成和暴露插件元信息、schema 和 form。
+- 通过 `executor` 执行插件状态机。
+- 在 `runtime` 包中定义框架无关接口。
 
-It should avoid importing Gin, GORM, Redis, APIGW SDKs, or `blueapps-go`.
+该 module 不应 import Gin、GORM、Redis、APIGW SDK 或 `blueapps-go`。
 
 ### bk-plugin-runtime-go
 
-This new module owns the runtime implementation:
+新 runtime module：
 
 ```text
 bk-plugin-runtime-go/
@@ -81,22 +80,22 @@ bk-plugin-runtime-go/
     callback/
 ```
 
-Responsibilities:
+职责：
 
-- Provide `runner.Run()`.
-- Initialize blueapps-go configuration, logging, database, Redis, tracing, metrics, and Gin runtime through blueapps-go public APIs.
-- Register `/bk_plugin/*` protocol routes.
-- Persist plugin schedule state.
-- Run poll and callback scheduling workers.
-- Verify APIGW authentication and plugin call scope.
-- Synchronize APIGW resources.
-- Provide plugin custom API registration and dispatch.
+- 提供 `runner.Run()`。
+- 通过 blueapps-go 公开 API 初始化配置、日志、DB、Redis、tracing、metrics 和 Gin runtime。
+- 注册 `/bk_plugin/*` 插件协议路由。
+- 持久化插件 schedule 状态。
+- 运行 poll/callback 调度 worker。
+- 校验 APIGW 调用身份和插件调用范围。
+- 同步 APIGW 资源。
+- 支持插件自定义 API 注册和 dispatch。
 
-The `blueappsadapter` package is a thin adapter. It must not copy blueapps-go implementation code. If blueapps-go lacks an extension point, prefer contributing a hook or exported helper to blueapps-go rather than duplicating its internals.
+`internal/blueappsadapter` 是薄适配层，不复制 blueapps-go 代码。若 blueapps-go 缺少必要扩展点，优先给 blueapps-go 增加 hook 或公开 helper，而不是在插件 runtime 内部复制实现。
 
-## Developer Migration
+## 开发者迁移方式
 
-### Before
+迁移前：
 
 ```go
 package main
@@ -115,7 +114,7 @@ func main() {
 }
 ```
 
-### After
+迁移后：
 
 ```go
 package main
@@ -134,14 +133,19 @@ func main() {
 }
 ```
 
-The ideal migration is a single runtime import change:
+理想情况下只需要把 runtime import 从：
 
-```diff
-- github.com/TencentBlueKing/beego-runtime/runner
-+ github.com/TencentBlueKing/bk-plugin-runtime-go/runner
+```go
+github.com/TencentBlueKing/beego-runtime/runner
 ```
 
-Most plugin business code should continue to use:
+改成：
+
+```go
+github.com/TencentBlueKing/bk-plugin-runtime-go/runner
+```
+
+插件业务代码继续实现：
 
 ```go
 type Plugin interface {
@@ -151,7 +155,7 @@ type Plugin interface {
 }
 ```
 
-Existing methods remain supported:
+既有 `kit.Context` 方法保持可用：
 
 ```go
 ctx.ReadInputs(&inputs)
@@ -162,17 +166,26 @@ ctx.SetSuccess()
 ctx.SetFail(err)
 ```
 
-Existing registration remains supported:
+既有注册方式保持可用：
 
 ```go
 hub.MustInstall(plugin, contextInputs, outputs, inputsForm)
 ```
 
-Newer APIs may be added for richer schemas and Python parity, but existing plugins should not be forced to migrate to them.
+新增更完整的注册方式用于后续补齐 Python 能力：
 
-## Runtime Commands
+```go
+hub.MustInstallV2(plugin, hub.PluginSpec{
+    Inputs:        Inputs{},
+    ContextInputs: ContextInputs{},
+    Outputs:       Outputs{},
+    Form:          form,
+})
+```
 
-`bk-plugin-runtime-go/runner` should preserve the old command shape where possible:
+## 运行时命令
+
+`bk-plugin-runtime-go/runner` 应尽量保留旧 runtime 的命令形态：
 
 ```text
 server
@@ -182,15 +195,15 @@ collectstatics
 version
 ```
 
-Command behavior:
+命令语义：
 
-- `server`: start the blueapps-go based Gin web runtime.
-- `worker`: start the plugin schedule worker.
-- `syncapigw`: synchronize plugin APIGW resources.
-- `collectstatics`: preserve as a compatibility command. If not needed by blueapps-go, make it a no-op with an explicit message.
-- no argument: start `server` for local developer convenience.
+- `server`：启动基于 blueapps-go/Gin 的插件 HTTP 服务。
+- `worker`：启动插件 schedule worker。
+- `syncapigw`：同步插件 APIGW 资源。
+- `collectstatics`：保留兼容命令；若 blueapps-go 不需要，则输出明确 no-op 提示。
+- 无参数：默认启动 `server`，兼容本地开发习惯。
 
-This keeps existing `app_desc.yml` commands close to their current form:
+这样存量 `app_desc.yml` 可以尽量保持：
 
 ```yaml
 processes:
@@ -200,9 +213,9 @@ processes:
     command: ./plugin worker
 ```
 
-## HTTP Protocol
+## HTTP 协议
 
-The runtime provides the plugin protocol:
+runtime 提供插件协议：
 
 ```text
 GET  /bk_plugin/meta
@@ -217,16 +230,16 @@ POST /bk_plugin/callback/:token
 GET  /bk_plugin/logs/:trace_id
 ```
 
-Compatibility rules:
+兼容原则：
 
-- Preserve old Go runtime response fields where documented.
-- Add Python-compatible fields as additive fields, not replacements.
-- Keep `trace_id`, plugin state, outputs, and error visibility stable.
-- Keep development-friendly routes optional and gated for non-production environments.
+- 保留旧 Go runtime 已文档化的响应字段。
+- Python 兼容字段通过新增字段补齐，不替换旧字段。
+- `trace_id`、状态值、outputs、错误信息保持稳定可见。
+- 开发态调试路由必须可关闭，生产环境不能默认暴露敏感信息。
 
-`meta` returns framework version, runtime version, language, and registered plugin versions.
+`meta` 返回 runtime 版本、语言和已注册插件版本。
 
-`detail` returns version description, schemas, and form metadata:
+`detail` 返回插件描述、schema 和 form：
 
 ```json
 {
@@ -241,15 +254,15 @@ Compatibility rules:
 }
 ```
 
-`invoke` creates a trace and executes the plugin once.
+`invoke` 创建一次 trace 并执行插件。
 
-`schedule` reads the persisted execution state and result.
+`schedule` 查询持久化执行状态和结果。
 
-`callback` receives external callback data and resumes a callback-waiting plugin trace.
+`callback` 接收外部系统回调数据，并恢复处于 callback 等待态的插件 trace。
 
-## State Machine
+## 状态机
 
-The old Go states stay valid:
+旧 Go 状态继续有效：
 
 ```text
 Empty -> Success
@@ -259,7 +272,7 @@ Empty -> Poll -> Fail
 Empty -> Poll -> Poll
 ```
 
-Callback support extends the model:
+callback 能力扩展后：
 
 ```text
 Empty    -> Callback
@@ -269,24 +282,22 @@ Callback -> Success
 Callback -> Fail
 ```
 
-`Poll` and `Callback` are waiting states. Every trace eventually finishes as `Success` or `Fail`.
+`Poll` 和 `Callback` 都是等待态，最终必须进入 `Success` 或 `Fail`。
 
-The framework SDK may add callback methods without changing `kit.Plugin`:
+SDK 可新增 callback 方法，但不能改变 `kit.Plugin` 接口：
 
 ```go
 ctx.WaitCallback(callbackInfo)
 ctx.ReadCallback(&payload)
 ```
 
-Existing plugins that do not use callbacks remain unaffected.
+不使用 callback 的旧插件不受影响。
 
-## Scheduling and Storage
+## 调度和存储
 
-Plugin poll and callback state must be durable. Do not rely on blueapps-go's in-process async goroutines as the core plugin scheduler.
+插件 poll/callback 状态必须可恢复、可追踪、可重试，不能依赖进程内 goroutine 作为核心调度机制。
 
-Use a DB-backed schedule table owned by `bk-plugin-runtime-go`.
-
-Suggested table:
+runtime 自己维护数据库 schedule 表：
 
 ```text
 plugin_schedules
@@ -315,56 +326,56 @@ plugin_schedules
   updated_at
 ```
 
-Indexing:
+索引：
 
-- unique index on `trace_id`
-- composite index on `state`, `next_run_at`, `locked_until`, `finished_at`
+- `trace_id` 唯一索引。
+- `state + next_run_at + locked_until + finished_at` 组合索引，用于 worker 扫描。
 
-Worker flow:
+worker 流程：
 
-1. `invoke` executes the plugin.
-2. If the plugin calls `WaitPoll(after)`, runtime persists state `Poll` and `next_run_at`.
-3. Worker scans due records.
-4. Worker claims a record using conditional update on `locked_until`.
-5. Worker calls `executor.Schedule`.
-6. Runtime persists the next state: `Success`, `Fail`, `Poll`, or `Callback`.
+1. `invoke` 初次执行插件。
+2. 插件调用 `WaitPoll(after)` 后，runtime 持久化 `StatePoll` 和 `next_run_at`。
+3. worker 扫描到期记录。
+4. worker 通过 `locked_until` 条件更新抢锁。
+5. worker 调用 `executor.Schedule`。
+6. runtime 持久化下一状态：`Success`、`Fail`、`Poll` 或 `Callback`。
 
-If a worker crashes, `locked_until` eventually expires and another worker can retry the trace.
+如果 worker 崩溃，`locked_until` 过期后其他 worker 可以接管。
 
-## Callback Security
+## callback 安全
 
-Callback token handling must not treat token as plain `trace_id`.
+callback token 不能简单等同于 `trace_id`。
 
-Token requirements:
+token 要求：
 
-- Include `trace_id`, `nonce`, and `expire_at`.
-- Use HMAC or authenticated encryption.
-- Store only token hash or nonce metadata in the database.
-- Reject expired, malformed, reused, completed, or state-mismatched callbacks.
+- 包含 `trace_id`、`nonce`、`expire_at`。
+- 使用 HMAC 或认证加密。
+- 数据库只保存 token hash 或 nonce 元数据。
+- 拒绝过期、伪造、重复使用、已完成 trace 或状态不匹配的 callback。
 
-Callback handling:
+callback 流程：
 
-1. Verify token signature and expiry.
-2. Load schedule by trace ID.
-3. Ensure current state is `Callback` and trace is unfinished.
-4. Store callback payload.
-5. Mark callback data ready and resume execution through scheduler.
+1. 校验 token 签名和过期时间。
+2. 根据 trace ID 读取 schedule。
+3. 确认当前状态是 `Callback` 且未完成。
+4. 写入 callback payload。
+5. 通过 worker 恢复执行，不在 HTTP handler 内联继续执行插件。
 
-Repeated callback requests should be idempotent: return an already-processed result without changing finished traces.
+重复 callback 请求应具备幂等性。
 
-## APIGW and Authorization
+## APIGW 和权限
 
-`invoke`, `schedule`, and `plugin_api_dispatch` must fully verify APIGW JWTs:
+`invoke`、`schedule`、`plugin_api_dispatch` 必须完整校验 APIGW JWT：
 
-- Verify signature.
-- Verify gateway source.
-- Parse caller app code.
-- Parse operator username.
-- Parse tenant and request metadata where available.
-- Enforce plugin call scope.
-- Store caller information in schedule audit fields.
+- 校验签名。
+- 校验网关来源。
+- 解析调用方 app code。
+- 解析 operator。
+- 解析租户和请求元信息。
+- 校验插件调用范围。
+- 把 caller 信息写入 schedule 审计字段。
 
-Add an allow-scope configuration to align with Python runtime behavior:
+补齐类似 Python runtime 的 allow scope：
 
 ```go
 hub.Configure(hub.Options{
@@ -372,16 +383,16 @@ hub.Configure(hub.Options{
 })
 ```
 
-Default policy:
+默认策略：
 
-- Development mode may allow local unauthenticated calls.
-- Production mode should require explicit authentication and scope validation.
+- 开发环境可允许本地免认证。
+- 生产环境必须显式鉴权和范围校验。
 
-## Plugin API
+## plugin API
 
-Plugin custom API should be a first-class capability in the runtime.
+插件自定义 API 应成为 runtime 的一等能力。
 
-Recommended public API:
+推荐公开 API：
 
 ```go
 import "github.com/TencentBlueKing/bk-plugin-runtime-go/pluginapi"
@@ -394,7 +405,7 @@ func init() {
 }
 ```
 
-Expose a narrow router interface rather than raw Gin as the primary API:
+稳定 API 优先暴露窄 Router 接口，而不是直接暴露 Gin：
 
 ```go
 type Router interface {
@@ -407,26 +418,26 @@ type Router interface {
 }
 ```
 
-An optional Gin adapter may exist for advanced users, but the stable API should not require plugin authors to depend on Gin directly.
+可提供可选 Gin adapter 给高级用户，但文档应推荐窄接口。
 
-Dispatch flow:
+dispatch 流程：
 
-1. Caller requests `/bk_plugin/plugin_api_dispatch`.
-2. Runtime verifies APIGW JWT and authorization.
-3. Runtime validates target path is under `/bk_plugin/plugin_api/`.
-4. Runtime injects caller app, operator, request ID, trace ID, tenant, and language context.
-5. Runtime forwards to registered plugin API handler.
-6. Handler response is returned to the caller.
+1. 调用方请求 `/bk_plugin/plugin_api_dispatch`。
+2. runtime 校验 APIGW JWT 和权限。
+3. runtime 校验目标 path 在 `/bk_plugin/plugin_api/` 范围内。
+4. 注入 caller app、operator、request ID、trace ID、tenant、language。
+5. 转发到注册的 plugin API handler。
+6. 返回 handler 响应。
 
-## Schema and Form Compatibility
+## schema 和 form
 
-Keep the legacy registration entrypoint:
+保留 legacy 入口：
 
 ```go
 hub.MustInstall(plugin, contextInputs, outputs, inputsForm)
 ```
 
-Add a richer API for new plugins:
+新增显式 schema 入口：
 
 ```go
 hub.MustInstallV2(plugin, hub.PluginSpec{
@@ -437,44 +448,42 @@ hub.MustInstallV2(plugin, hub.PluginSpec{
 })
 ```
 
-The old API should continue generating context input and output schemas, and returning existing input form information.
+旧 API 继续返回既有 input form 信息；新 API 支持显式 input schema，更适合对齐 Python runtime。
 
-The new API can add explicit input schema support and better Python parity.
+## Python 能力对齐范围
 
-## Python Parity Scope
+首版必须支持：
 
-Initial version must support:
+- 插件版本注册。
+- `meta/detail/invoke/schedule`。
+- input form metadata。
+- context input 和 output schema。
+- poll 调度。
+- invoke/schedule 的 APIGW 鉴权。
+- plugin API dispatch。
+- runtime 日志和 trace ID。
+- 多插件版本。
 
-- plugin version registration
-- `meta`, `detail`, `invoke`, and `schedule`
-- input form metadata
-- context input and output schemas
-- poll scheduling
-- APIGW authentication for invoke and schedule
-- plugin API dispatch
-- runtime logs and trace IDs
-- multiple plugin versions
+首版建议支持或预留：
 
-Initial version should also support or prepare for:
+- callback 等待态。
+- 安全 callback token。
+- allow scope。
+- 统一错误格式。
+- plugin finish callback。
+- 开发态 debug 路由。
 
-- callback waiting state
-- secure callback tokens
-- allow scope
-- unified error format
-- plugin finish callback
-- development debug routes
+后续增强：
 
-Later enhancements:
+- 更完整 debug panel。
+- 更接近 Python Pydantic 的复杂 schema 表达。
+- 自动发现插件版本目录。
+- form 静态资源管理。
+- 更细粒度租户隔离。
 
-- richer debug panel
-- richer schema semantics comparable to Python Pydantic behavior
-- automatic plugin version discovery
-- static form asset management
-- finer tenant isolation rules
+## 错误处理
 
-## Error Handling
-
-Use a consistent HTTP error envelope:
+HTTP 层统一错误格式：
 
 ```json
 {
@@ -484,7 +493,7 @@ Use a consistent HTTP error envelope:
 }
 ```
 
-Schedule responses should include trace state and plugin error information:
+schedule 查询保留插件状态和插件错误：
 
 ```json
 {
@@ -502,19 +511,19 @@ Schedule responses should include trace state and plugin error information:
 }
 ```
 
-Error categories:
+错误分层：
 
-- plugin business errors
-- runtime validation or serialization errors
-- infrastructure errors such as database, APIGW, or scheduler failures
+- 插件业务错误。
+- runtime 校验或序列化错误。
+- 数据库、APIGW、scheduler 等基础设施错误。
 
-Runtime errors should be logged with request ID and trace ID.
+runtime 错误日志必须包含 request ID 和 trace ID。
 
-## Observability
+## 可观测性
 
-Use blueapps-go logging, tracing, and metrics infrastructure.
+复用 blueapps-go 日志、tracing 和 metrics 基础设施。
 
-Every plugin execution log should include:
+每次插件执行日志包含：
 
 - `trace_id`
 - `plugin_version`
@@ -526,7 +535,7 @@ Every plugin execution log should include:
 - `elapsed_ms`
 - `error_code`
 
-Metrics:
+指标：
 
 ```text
 plugin_invoke_total
@@ -537,9 +546,9 @@ plugin_callback_total
 plugin_waiting_tasks
 ```
 
-## Migration Tooling
+## 迁移工具
 
-Provide:
+建议提供：
 
 ```text
 docs/migration/beego-runtime-to-runtime-go.md
@@ -550,45 +559,45 @@ examples/plugin-with-callback
 examples/plugin-api
 ```
 
-`tools/check-migration` should detect:
+`tools/check-migration` 检查：
 
-- imports of `github.com/TencentBlueKing/beego-runtime/runner`
-- imports of Beego packages
-- imports of `beego-runtime` internal packages
-- custom plugin API Beego controllers
-- incompatible `app_desc.yml` commands
-- likely reliance on old debug panel behavior
+- 是否 import `github.com/TencentBlueKing/beego-runtime/runner`。
+- 是否 import Beego 包。
+- 是否 import `beego-runtime` 内部包。
+- 是否使用 Beego controller 自定义 plugin API。
+- `app_desc.yml` command 是否兼容。
+- 是否依赖旧 debug panel 行为。
 
-## Testing Strategy
+## 测试策略
 
 ### bk-plugin-framework-go
 
-Run lightweight SDK and executor tests:
+轻量 SDK/executor 测试：
 
-- `kit.Context`
-- `hub.MustInstall`
-- schema generation
-- version validation
-- state transition behavior
-- sync success and failure
-- poll scheduling behavior
-- callback SDK behavior when added
+- `kit.Context`。
+- `hub.MustInstall`。
+- schema 生成。
+- 版本校验。
+- 状态流转。
+- 同步成功和失败。
+- poll 行为。
+- callback SDK 行为。
 
 ### bk-plugin-runtime-go
 
-Run runtime integration tests:
+runtime 集成测试：
 
-- `/bk_plugin/meta`
-- `/bk_plugin/detail/:version`
-- `/bk_plugin/invoke/:version`
-- `/bk_plugin/schedule/:trace_id`
-- `/bk_plugin/callback/:token`
-- `/bk_plugin/plugin_api_dispatch`
-- APIGW authentication success and failure
-- scheduler locking and retry
-- callback idempotency
+- `/bk_plugin/meta`。
+- `/bk_plugin/detail/:version`。
+- `/bk_plugin/invoke/:version`。
+- `/bk_plugin/schedule/:trace_id`。
+- `/bk_plugin/callback/:token`。
+- `/bk_plugin/plugin_api_dispatch`。
+- APIGW 鉴权成功和失败。
+- scheduler 抢锁和重试。
+- callback 幂等。
 
-Compatibility fixtures:
+兼容 fixture：
 
 ```text
 legacy-sync-plugin
@@ -597,65 +606,59 @@ legacy-plugin-api
 python-protocol-compatible-plugin
 ```
 
-CI should test `bk-plugin-runtime-go` against the pinned blueapps-go version and periodically check compatibility with newer blueapps-go releases.
+CI 需要测试 runtime 对 pinned blueapps-go 版本的兼容性，并定期检查较新 blueapps-go 版本。
 
-## Release Plan
+## 发布节奏
 
-Phase 1: compatibility runtime
+Phase 1：兼容 runtime。
 
-- Publish `bk-plugin-runtime-go/runner`.
-- Support legacy `hub.MustInstall`.
-- Support sync and poll plugins.
-- Preserve runner command shape.
-- Provide migration guide and examples.
+- 发布 `bk-plugin-runtime-go/runner`。
+- 支持 legacy `hub.MustInstall`。
+- 支持同步插件和 poll 插件。
+- 保留 runner 命令形态。
+- 提供迁移指南和 examples。
 
-Phase 2: Python parity
+Phase 2：Python 能力对齐。
 
-- Add callback state.
-- Add allow scope.
-- Complete plugin API dispatch authorization.
-- Add plugin finish callback.
-- Improve detail schema and form metadata.
+- 增加 callback 状态。
+- 增加 allow scope。
+- 完善 plugin API dispatch 鉴权。
+- 增加 plugin finish callback。
+- 改进 detail schema 和 form metadata。
 
-Phase 3: beego-runtime deprecation
+Phase 3：废弃 beego-runtime。
 
-- Mark `beego-runtime` deprecated.
-- Stop adding features to it.
-- Keep only critical bug and security fixes for a defined period.
-- Publish an end-of-maintenance timeline.
+- 标记 `beego-runtime` deprecated。
+- 不再新增功能。
+- 只保留严重 bug 和安全修复。
+- 发布明确停止维护时间。
 
-## Risks and Mitigations
+## 风险和缓解
 
-Risk: blueapps-go does not expose enough extension points.
+风险：blueapps-go 扩展点不足。  
+缓解：优先使用公开 API，缺少 hook 时向 blueapps-go 补扩展点，不复制内部代码。
 
-Mitigation: use public APIs where possible and contribute missing hooks upstream instead of copying blueapps-go internals.
+风险：旧插件依赖未文档化的 Beego runtime 行为。  
+缓解：提供迁移检查工具、fixture 兼容测试和明确的不兼容说明。
 
-Risk: old plugins depend on undocumented Beego runtime behavior.
+风险：APIGW 权限收紧影响现有调用方。  
+缓解：开发环境允许本地 bypass，生产环境提供清晰错误码和 allow-scope 配置。
 
-Mitigation: provide migration checker, fixture-based compatibility tests, and explicit unsupported behavior docs.
+风险：scheduler 行为和旧 runtime 不一致。  
+缓解：用兼容测试锁住 trace ID、状态值、响应结构和 retry 行为。
 
-Risk: stricter APIGW authorization breaks existing callers.
+## 非目标
 
-Mitigation: provide development-mode bypass, clear production errors, and allow-scope configuration.
+- 不保留 Beego runtime 依赖。
+- 不把 blueapps-go 暴露成插件开发者 API。
+- 不复制 blueapps-go 内部实现。
+- 不要求存量插件重写业务逻辑。
+- 不兼容未文档化的 `beego-runtime` 内部包用法。
 
-Risk: scheduler behavior differs from old runtime.
+## 首版实现默认值
 
-Mitigation: lock old sync and poll behavior with compatibility tests around trace ID, state values, response shape, and retry behavior.
-
-## Non-Goals
-
-- Do not keep Beego as a runtime dependency.
-- Do not expose blueapps-go as the plugin developer API.
-- Do not copy blueapps-go implementation code into the plugin runtime.
-- Do not require existing plugins to rewrite business logic for the initial migration.
-- Do not guarantee compatibility for undocumented `beego-runtime` internal package usage.
-
-## Implementation Defaults
-
-Use these defaults for the first implementation plan:
-
-- Runtime module path: `github.com/TencentBlueKing/bk-plugin-runtime-go`.
-- New registration API: introduce `hub.MustInstallV2(plugin, hub.PluginSpec{...})` while keeping legacy `hub.MustInstall(...)`.
-- APIGW integration: use BlueKing APIGW SDK APIs from the runtime module only; do not add APIGW dependencies to `bk-plugin-framework-go`.
-- Callback resumption: store callback payload first, then resume through the worker. Do not execute plugin callback continuation inline in the HTTP callback handler.
-- Plugin API router: include middleware support in the first stable router interface so common auth, audit, and request adaptation logic does not require exposing raw Gin.
+- runtime module path：`github.com/TencentBlueKing/bk-plugin-runtime-go`。
+- 新注册 API：`hub.MustInstallV2(plugin, hub.PluginSpec{...})`，同时保留 legacy `hub.MustInstall(...)`。
+- APIGW 集成只放在 runtime module，不能给 `bk-plugin-framework-go` 增加 APIGW 依赖。
+- callback 恢复：HTTP handler 只保存 payload，后续通过 worker 恢复执行。
+- plugin API Router 首版包含 middleware 支持，避免用户为了常见鉴权/审计逻辑直接依赖 Gin。
