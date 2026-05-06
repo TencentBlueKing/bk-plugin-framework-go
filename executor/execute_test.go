@@ -47,6 +47,7 @@ type testRuntime struct {
 	pollCalled    bool
 	failCalled    bool
 	successCalled bool
+	pollErr       error
 	failErr       error
 }
 
@@ -60,7 +61,7 @@ func (r *testRuntime) GetContextStore() runtime.ObjectStore {
 
 func (r *testRuntime) SetPoll(traceID string, version string, invokeCount int, after time.Duration) error {
 	r.pollCalled = true
-	return nil
+	return r.pollErr
 }
 
 func (r *testRuntime) SetFail(traceID string, err error) error {
@@ -81,6 +82,17 @@ func (p panicPlugin) Version() string { return p.version }
 func (p panicPlugin) Desc() string    { return "panic plugin" }
 func (p panicPlugin) Execute(c *kit.Context) error {
 	panic("boom")
+}
+
+type waitPollPlugin struct {
+	version string
+}
+
+func (p waitPollPlugin) Version() string { return p.version }
+func (p waitPollPlugin) Desc() string    { return "wait poll plugin" }
+func (p waitPollPlugin) Execute(c *kit.Context) error {
+	c.WaitPoll(time.Second)
+	return nil
 }
 
 func TestExecuteGetPluginError(t *testing.T) {
@@ -142,5 +154,16 @@ func TestScheduleRecoverPluginPanicReportsSetFailError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "SetFail after Execute panic")
+	assert.True(t, rt.failCalled)
+}
+
+func TestScheduleSetPollErrorReturnsOriginalAfterSetFail(t *testing.T) {
+	hub.MustInstallV2(waitPollPlugin{version: "8.0.3"}, hub.PluginSpec{Form: []byte(`{}`)})
+	rt := &testRuntime{pollErr: fmt.Errorf("poll write failed")}
+
+	err := Schedule("trace-poll-error", "8.0.3", 2, testReader{}, rt, log.WithFields(log.Fields{}))
+
+	assert.EqualError(t, err, "poll write failed")
+	assert.True(t, rt.pollCalled)
 	assert.True(t, rt.failCalled)
 }
