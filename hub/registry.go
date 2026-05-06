@@ -40,8 +40,17 @@ var options = Options{}
 
 // Options stores process-level plugin framework options.
 type Options struct {
-	AllowScope           []string
+	AllowScope           AllowScope
 	EnablePluginCallback bool
+}
+
+// AllowScope stores scope restrictions by plugin consumer app code.
+type AllowScope map[string]ScopeRule
+
+// ScopeRule stores the business scope type and allowed values for one app.
+type ScopeRule struct {
+	Type  string
+	Value []string
 }
 
 // Configure sets process-level plugin framework options.

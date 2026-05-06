@@ -79,9 +79,9 @@ go test ./internal/callback ./internal/store ./internal/server ./internal/schedu
 
 实现：
 
-- 若 `hub.Options.AllowScope` 非空，`invoke` / `schedule` / `plugin_api_dispatch` 需要请求头 `X-Bkapi-App-Code` 命中 allow scope。
+- 若 `hub.Options.AllowScope` 中包含调用方 app code，`invoke` / `schedule` / `plugin_api_dispatch` 需要请求头 `Bkplugin-Scope-Type` / `Bkplugin-Scope-Value` 命中对应业务域规则；未配置 allow scope 或调用方 app code 未命中时默认放行，保持 Python 版语义。
 - 开发环境或未配置 allow scope 时默认放行。
-- 从 context inputs 的 `plugin_callback_info.url` / `token` 读取 finish callback 配置。
+- 从 context inputs 的 `plugin_callback_info.url` / `data` 读取 finish callback 配置。
 - 插件最终 `Success` / `Fail` 后发送 finish callback。
 - finish callback 失败只记录错误，不回滚插件终态。
 

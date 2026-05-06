@@ -331,11 +331,13 @@ func TestConfigureOptions(t *testing.T) {
 	clearHub()
 
 	Configure(Options{
-		AllowScope:           []string{"bk_sops", "bk_itsm"},
+		AllowScope: AllowScope{
+			"bk_sops": {Type: "project", Value: []string{"1", "2"}},
+		},
 		EnablePluginCallback: true,
 	})
 
 	opts := GetOptions()
-	assert.Equal(t, []string{"bk_sops", "bk_itsm"}, opts.AllowScope)
+	assert.Equal(t, AllowScope{"bk_sops": {Type: "project", Value: []string{"1", "2"}}}, opts.AllowScope)
 	assert.True(t, opts.EnablePluginCallback)
 }

@@ -379,7 +379,9 @@ callback 流程：
 
 ```go
 hub.Configure(hub.Options{
-    AllowScope: []string{"bk_sops", "bk_itsm"},
+    AllowScope: hub.AllowScope{
+        "bk_sops": {Type: "project", Value: []string{"1", "2"}},
+    },
 })
 ```
 
