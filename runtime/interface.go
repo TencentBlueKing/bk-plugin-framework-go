@@ -33,7 +33,7 @@ type CallbackReader interface {
 
 // ObjectStore is the interface that wraps the basic store operate method.
 //
-// Write should store the value pointed to by v with traceID
+// # Write should store the value pointed to by v with traceID
 //
 // Read should parses data with traceID and store the result
 // in the value pointed to by v.

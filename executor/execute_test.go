@@ -44,13 +44,13 @@ func (s testStore) Read(traceID string, v interface{}) error {
 }
 
 type testRuntime struct {
-	pollCalled    bool
+	pollCalled     bool
 	callbackCalled bool
-	failCalled    bool
-	successCalled bool
-	pollErr       error
-	callbackErr   error
-	failErr       error
+	failCalled     bool
+	successCalled  bool
+	pollErr        error
+	callbackErr    error
+	failErr        error
 }
 
 func (r *testRuntime) GetOutputsStore() runtime.ObjectStore {

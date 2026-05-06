@@ -68,6 +68,7 @@ func TestContext(t *testing.T) {
 	reader := MockContextReader{}
 	reader.On("ReadInputs", &v).Return(nil)
 	reader.On("ReadContextInputs", &v).Return(nil)
+	reader.On("ReadCallback", &v).Return(nil)
 
 	outputsStore := MockStore{}
 	outputsStore.On("Write", "trace", &v).Return(nil)

@@ -22,16 +22,16 @@ import (
 
 // A Context store all context information and data for once plugin execution.
 type Context struct {
-	traceID      string
-	state        constants.State
-	pollInterval time.Duration
+	traceID         string
+	state           constants.State
+	pollInterval    time.Duration
 	callbackTimeout time.Duration
-	waitingPoll  bool
+	waitingPoll     bool
 	waitingCallback bool
-	invokeCount  int
-	reader       runtime.ContextReader
-	store        runtime.ObjectStore
-	outputsStore runtime.ObjectStore
+	invokeCount     int
+	reader          runtime.ContextReader
+	store           runtime.ObjectStore
+	outputsStore    runtime.ObjectStore
 	*log.Entry
 }
 
