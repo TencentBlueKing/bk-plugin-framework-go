@@ -401,12 +401,14 @@ go test ./examples/legacy-compatible-plugin -count=1
 - `executor.Schedule` 获取插件版本失败后，在 `SetFail` 成功后会立即返回，不再继续执行空插件实例。
 - `GormStore.ClaimDue` 二次抢锁时重新约束 `state = StatePoll`、`finished_at IS NULL`、`next_run_at <= now`，避免 stale candidate 把已完成任务重新锁住并重复执行。
 - `MarkSuccess/MarkFail` 会同步保存当前 `invoke_count`，避免终态审计数据偏小。
+- `executor.Schedule` 在 `SetPoll` 失败且成功标记失败后，会返回原始 `SetPoll` 错误，避免 worker 吞掉本次调度写入失败。
 
 实际提交：
 
 ```text
 529122f fix: harden executor error handling
 e63d174 fix: harden schedule locking and invoke count
+c4dc66d fix: return schedule poll errors
 ```
 
 ## 后续计划
