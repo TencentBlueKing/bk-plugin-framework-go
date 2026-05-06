@@ -1,7 +1,5 @@
 # 基于 blueapps-go 的插件运行时重构 Phase 1 实现计划
 
-> **给 agentic worker 的要求：** 实现本计划时必须使用 `superpowers:subagent-driven-development` 或 `superpowers:executing-plans`，按任务逐步执行并在每个任务后做验证。
-
 **目标：** 交付第一版可替代 `beego-runtime` 的 Go 插件运行时，优先支持同步插件和 `WaitPoll` 轮询插件，并尽量保持插件业务代码不变。
 
 **架构：** `bk-plugin-framework-go` 保持轻量 SDK；新增 sibling module `bk-plugin-runtime-go` 作为基于 blueapps-go 的运行时。Phase 1 完成 SDK 注册兼容、runtime 命令入口、`meta/detail/invoke/schedule` HTTP 协议、持久化 schedule store、poll worker、迁移文档和 legacy fixture。
