@@ -393,6 +393,22 @@ go test ./... -count=1
 go test ./examples/legacy-compatible-plugin -count=1
 ```
 
+## 任务 10：最终 review 修复
+
+最终代码审查发现并修复了以下问题：
+
+- 插件 `panic` 时，`executor.Execute` 和 `executor.Schedule` 现在会 recover 并返回错误，避免 trace 卡在未完成状态或 worker 进程直接退出。
+- `executor.Schedule` 获取插件版本失败后，在 `SetFail` 成功后会立即返回，不再继续执行空插件实例。
+- `GormStore.ClaimDue` 二次抢锁时重新约束 `state = StatePoll`、`finished_at IS NULL`、`next_run_at <= now`，避免 stale candidate 把已完成任务重新锁住并重复执行。
+- `MarkSuccess/MarkFail` 会同步保存当前 `invoke_count`，避免终态审计数据偏小。
+
+实际提交：
+
+```text
+529122f fix: harden executor error handling
+e63d174 fix: harden schedule locking and invoke count
+```
+
 ## 后续计划
 
 Phase 1 完成后，后续建议按独立计划继续：
