@@ -10,6 +10,8 @@
 package executor
 
 import (
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
@@ -29,7 +31,20 @@ import (
 // The reader set the read source of inputs.
 //
 // The runtime set the execute runtime use in schedule action.
-func Schedule(traceID string, version string, invokeCount int, reader runtime.ContextReader, runtime runtime.PluginScheduleExecuteRuntime, logger *log.Entry) error {
+func Schedule(traceID string, version string, invokeCount int, reader runtime.ContextReader, runtime runtime.PluginScheduleExecuteRuntime, logger *log.Entry) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			panicErr := fmt.Errorf("plugin schedule panic: %v", r)
+			logger.Errorf("plugin schedule panic: %v\n", r)
+			if setErr := runtime.SetFail(traceID, panicErr); setErr != nil {
+				logger.Errorf("set fail after panic err: %v\n", setErr)
+				err = errors.Wrap(errors.Wrap(panicErr, setErr.Error()), "SetFail after Execute panic")
+				return
+			}
+			err = panicErr
+		}
+	}()
+
 	// get plugin
 	p, err := hub.GetPlugin(version)
 	if err != nil {
@@ -37,6 +52,7 @@ func Schedule(traceID string, version string, invokeCount int, reader runtime.Co
 		if setErr := runtime.SetFail(traceID, err); setErr != nil {
 			return errors.Wrap(errors.Wrap(err, setErr.Error()), "SetFail after GetPlugin error")
 		}
+		return err
 	}
 
 	// init context

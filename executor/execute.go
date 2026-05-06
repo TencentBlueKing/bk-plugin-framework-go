@@ -12,6 +12,8 @@
 package executor
 
 import (
+	"fmt"
+
 	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
 	"github.com/TencentBlueKing/bk-plugin-framework-go/hub"
 	"github.com/TencentBlueKing/bk-plugin-framework-go/kit"
@@ -28,7 +30,15 @@ import (
 // The reader set the read source of inputs.
 //
 // The runtime set the execute runtime use in execute action.
-func Execute(traceID string, version string, reader runtime.ContextReader, runtime runtime.PluginExecuteRuntime, logger *log.Entry) (constants.State, error) {
+func Execute(traceID string, version string, reader runtime.ContextReader, runtime runtime.PluginExecuteRuntime, logger *log.Entry) (state constants.State, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("plugin execute panic: %v", r)
+			state = constants.StateFail
+			logger.Errorf("plugin execute panic: %v\n", r)
+		}
+	}()
+
 	// get plugin
 	p, err := hub.GetPlugin(version)
 	if err != nil {
