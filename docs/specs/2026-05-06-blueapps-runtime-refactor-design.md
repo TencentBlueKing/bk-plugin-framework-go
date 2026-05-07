@@ -397,7 +397,7 @@ hub.Configure(hub.Options{
 推荐公开 API：
 
 ```go
-import "github.com/TencentBlueKing/bk-plugin-runtime-go/pluginapi"
+import "github.com/TencentBlueKing/bk-plugin-framework-go/pluginapi"
 
 func init() {
     pluginapi.Register(func(r pluginapi.Router) {
@@ -407,20 +407,23 @@ func init() {
 }
 ```
 
-稳定 API 优先暴露窄 Router 接口，而不是直接暴露 Gin：
+稳定 API 优先暴露窄 Router 接口，而不是直接暴露 Gin。路径参数通过 framework helper 读取：
 
 ```go
-type Router interface {
-    GET(path string, h HandlerFunc)
-    POST(path string, h HandlerFunc)
-    PUT(path string, h HandlerFunc)
-    DELETE(path string, h HandlerFunc)
-    Any(path string, h HandlerFunc)
-    Group(path string, middlewares ...Middleware) Router
+func getTask(w http.ResponseWriter, r *http.Request) {
+    taskID := pluginapi.Param(r, "id")
 }
 ```
 
-可提供可选 Gin adapter 给高级用户，但文档应推荐窄接口。
+```go
+type Router interface {
+    Handle(method string, path string, handler http.HandlerFunc)
+    GET(path string, handler http.HandlerFunc)
+    POST(path string, handler http.HandlerFunc)
+}
+```
+
+后续可以按需扩展更多 HTTP method 或 middleware 抽象，但首版不提供 Gin 类型。
 
 dispatch 流程：
 

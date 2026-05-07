@@ -95,15 +95,14 @@ go test ./internal/auth ./internal/finishcallback ./internal/server ./internal/s
 
 文件：
 
-- 新增 `pluginapi/router.go`
-- 新增 `internal/pluginapi/registry.go`
+- 在 `bk-plugin-framework-go` 新增 `pluginapi/router.go`
 - 修改 `internal/server/router.go`
 - 新增 `internal/server/plugin_api.go`
 - 新增 `internal/server/plugin_api_test.go`
 
 实现：
 
-- 提供 `pluginapi.RegisterGin(func(gin.IRouter))` 作为 Phase 2 过渡 API。
+- 提供 `pluginapi.Register(func(pluginapi.Router))`，由 runtime 适配到 Gin，不向插件业务代码暴露 Gin 类型。
 - runtime 注册 `/bk_plugin/plugin_api/*path`。
 - runtime 注册 `/bk_plugin/plugin_api_dispatch`，只允许转发到 `/bk_plugin/plugin_api/` 范围内。
 - dispatch 注入调用方 header：`X-Bkapi-App-Code`、`X-Bkapi-Operator`、`X-Bkapi-Request-Id`。
