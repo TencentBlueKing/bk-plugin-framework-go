@@ -62,6 +62,7 @@ func ScheduleWithState(traceID string, version string, invokeCount int, state co
 
 	// init context
 	c := kit.NewContext(traceID, state, invokeCount, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
+	setCallbackPreparer(c, traceID, version, runtime)
 
 	// execute
 	if err := p.Execute(c); err != nil {

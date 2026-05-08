@@ -12,6 +12,13 @@ package runtime
 
 import "time"
 
+// CallbackPreparation contains the callback endpoint prepared before a plugin
+// enters StateCallback.
+type CallbackPreparation struct {
+	ID  string `json:"id"`
+	URL string `json:"url"`
+}
+
 // ContextReader is the interface that wraps the basic read method
 // used by Context
 //
@@ -61,6 +68,13 @@ type PluginExecuteRuntime interface {
 // support StateCallback.
 type PluginCallbackRuntime interface {
 	SetCallback(traceID string, version string, invokeCount int, timeout time.Duration) error
+}
+
+// PluginCallbackPrepareRuntime is an optional interface implemented by
+// runtimes that can prepare callback metadata before a plugin starts an
+// external async task.
+type PluginCallbackPrepareRuntime interface {
+	PrepareCallback(traceID string, version string, invokeCount int, timeout time.Duration) (CallbackPreparation, error)
 }
 
 // PluginExecuteRuntime is the interface that wraps the basic runtime method

@@ -22,16 +22,17 @@ import (
 
 // A Context store all context information and data for once plugin execution.
 type Context struct {
-	traceID         string
-	state           constants.State
-	pollInterval    time.Duration
-	callbackTimeout time.Duration
-	waitingPoll     bool
-	waitingCallback bool
-	invokeCount     int
-	reader          runtime.ContextReader
-	store           runtime.ObjectStore
-	outputsStore    runtime.ObjectStore
+	traceID          string
+	state            constants.State
+	pollInterval     time.Duration
+	callbackTimeout  time.Duration
+	callbackPreparer func(timeout time.Duration) (runtime.CallbackPreparation, error)
+	waitingPoll      bool
+	waitingCallback  bool
+	invokeCount      int
+	reader           runtime.ContextReader
+	store            runtime.ObjectStore
+	outputsStore     runtime.ObjectStore
 	*log.Entry
 }
 
@@ -108,6 +109,20 @@ func (c *Context) WaitingPoll() bool {
 func (c *Context) WaitCallback(timeout time.Duration) {
 	c.callbackTimeout = timeout
 	c.waitingCallback = true
+}
+
+// SetCallbackPreparer sets the runtime callback preparation hook.
+func (c *Context) SetCallbackPreparer(preparer func(timeout time.Duration) (runtime.CallbackPreparation, error)) {
+	c.callbackPreparer = preparer
+}
+
+// PrepareCallback asks runtime to prepare a callback URL before entering
+// callback state, so plugin code can pass the URL to an external async system.
+func (c *Context) PrepareCallback(timeout time.Duration) (runtime.CallbackPreparation, error) {
+	if c.callbackPreparer == nil {
+		return runtime.CallbackPreparation{}, fmt.Errorf("runtime does not support callback preparation")
+	}
+	return c.callbackPreparer(timeout)
 }
 
 // WaitingCallback returns whether current execution should enter callback state.

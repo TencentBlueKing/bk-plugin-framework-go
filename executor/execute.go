@@ -49,6 +49,7 @@ func Execute(traceID string, version string, reader pluginruntime.ContextReader,
 
 	// init context
 	c := kit.NewContext(traceID, constants.StateEmpty, 1, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
+	setCallbackPreparer(c, traceID, version, runtime)
 
 	// execute
 	if err := p.Execute(c); err != nil {

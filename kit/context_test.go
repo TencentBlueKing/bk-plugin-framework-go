@@ -16,6 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/runtime"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -107,6 +108,16 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, c.callbackTimeout, 30*time.Minute)
 	assert.True(t, c.WaitingCallback())
 
+	// PrepareCallback test
+	c.SetCallbackPreparer(func(timeout time.Duration) (runtime.CallbackPreparation, error) {
+		assert.Equal(t, 30*time.Minute, timeout)
+		return runtime.CallbackPreparation{ID: "callback-id", URL: "https://callback.example.com/token"}, nil
+	})
+	preparation, err := c.PrepareCallback(30 * time.Minute)
+	assert.NoError(t, err)
+	assert.Equal(t, "callback-id", preparation.ID)
+	assert.Equal(t, "https://callback.example.com/token", preparation.URL)
+
 	// Read test
 	c.ReadInputs(&v)
 	reader.AssertCalled(t, "ReadInputs", &v)
@@ -164,4 +175,20 @@ func TestNewContext(t *testing.T) {
 	assert.Equal(t, c.reader, &reader)
 	assert.Equal(t, c.store, &store)
 	assert.Equal(t, c.outputsStore, &outputsStore)
+}
+
+func TestContextPrepareCallbackWithoutRuntimeSupport(t *testing.T) {
+	c := NewContext(
+		"trace",
+		constants.StateEmpty,
+		1,
+		&MockContextReader{},
+		&MockStore{},
+		&MockStore{},
+		log.WithFields(log.Fields{}),
+	)
+
+	_, err := c.PrepareCallback(time.Minute)
+
+	assert.EqualError(t, err, "runtime does not support callback preparation")
 }

@@ -45,12 +45,15 @@ func (s testStore) Read(traceID string, v interface{}) error {
 
 type testRuntime struct {
 	pollCalled     bool
+	prepareCalled  bool
 	callbackCalled bool
 	failCalled     bool
 	successCalled  bool
 	pollErr        error
+	prepareErr     error
 	callbackErr    error
 	failErr        error
+	prepared       runtime.CallbackPreparation
 }
 
 func (r *testRuntime) GetOutputsStore() runtime.ObjectStore {
@@ -64,6 +67,11 @@ func (r *testRuntime) GetContextStore() runtime.ObjectStore {
 func (r *testRuntime) SetPoll(traceID string, version string, invokeCount int, after time.Duration) error {
 	r.pollCalled = true
 	return r.pollErr
+}
+
+func (r *testRuntime) PrepareCallback(traceID string, version string, invokeCount int, timeout time.Duration) (runtime.CallbackPreparation, error) {
+	r.prepareCalled = true
+	return r.prepared, r.prepareErr
 }
 
 func (r *testRuntime) SetCallback(traceID string, version string, invokeCount int, timeout time.Duration) error {
@@ -110,6 +118,24 @@ func (p waitCallbackPlugin) Version() string { return p.version }
 func (p waitCallbackPlugin) Desc() string    { return "wait callback plugin" }
 func (p waitCallbackPlugin) Execute(c *kit.Context) error {
 	c.WaitCallback(time.Hour)
+	return nil
+}
+
+type prepareCallbackPlugin struct {
+	version string
+}
+
+func (p prepareCallbackPlugin) Version() string { return p.version }
+func (p prepareCallbackPlugin) Desc() string    { return "prepare callback plugin" }
+func (p prepareCallbackPlugin) Execute(c *kit.Context) error {
+	preparation, err := c.PrepareCallback(30 * time.Minute)
+	if err != nil {
+		return err
+	}
+	if preparation.URL != "https://callback.example.com/bk_plugin/callback/token" {
+		return fmt.Errorf("unexpected callback url: %s", preparation.URL)
+	}
+	c.WaitCallback(30 * time.Minute)
 	return nil
 }
 
@@ -194,6 +220,23 @@ func TestExecuteSetCallbackSuccess(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, constants.StateCallback, state)
+	assert.True(t, rt.callbackCalled)
+}
+
+func TestExecuteProvidesCallbackPreparationToPlugin(t *testing.T) {
+	hub.MustInstallV2(prepareCallbackPlugin{version: "8.0.6"}, hub.PluginSpec{Form: []byte(`{}`)})
+	rt := &testRuntime{
+		prepared: runtime.CallbackPreparation{
+			ID:  "callback-id",
+			URL: "https://callback.example.com/bk_plugin/callback/token",
+		},
+	}
+
+	state, err := Execute("trace-callback", "8.0.6", testReader{}, rt, log.WithFields(log.Fields{}))
+
+	assert.NoError(t, err)
+	assert.Equal(t, constants.StateCallback, state)
+	assert.True(t, rt.prepareCalled)
 	assert.True(t, rt.callbackCalled)
 }
 
