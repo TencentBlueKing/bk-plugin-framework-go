@@ -7,14 +7,22 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// Package info store basic information of bk-plugin-framework-go.
-package info
+package protocol
 
-const (
-	version = "v1.0.1"
-)
+// Response is the standard response envelope exposed by plugin service APIs.
+type Response struct {
+	Result  bool        `json:"result"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+}
 
-// Version returns the current version number of bk-plugin-framework-go.
-func Version() string {
-	return version
+// OK wraps data in the standard success envelope.
+func OK(data interface{}) Response {
+	return Response{Result: true, Code: 0, Message: "success", Data: data}
+}
+
+// Error wraps an error in the standard failure envelope.
+func Error(code int, message string) Response {
+	return Response{Result: false, Code: code, Message: message, Data: nil}
 }
