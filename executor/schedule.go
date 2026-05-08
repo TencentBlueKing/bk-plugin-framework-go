@@ -59,6 +59,11 @@ func ScheduleWithState(traceID string, version string, invokeCount int, state co
 		}
 		return err
 	}
+	logger.WithFields(log.Fields{
+		"plugin_version": version,
+		"invoke_count":   invokeCount,
+		"state":          state,
+	}).Info("plugin schedule start")
 
 	// init context
 	c := kit.NewContext(traceID, state, invokeCount, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
@@ -75,6 +80,11 @@ func ScheduleWithState(traceID string, version string, invokeCount int, state co
 	}
 
 	if c.WaitingCallback() {
+		logger.WithFields(log.Fields{
+			"plugin_version":           version,
+			"invoke_count":             invokeCount,
+			"callback_timeout_seconds": int(c.CallbackTimeout().Seconds()),
+		}).Info("plugin schedule wait callback")
 		callbackRuntime, ok := runtime.(pluginruntime.PluginCallbackRuntime)
 		if !ok {
 			err := errors.New("runtime does not support callback state")
@@ -95,6 +105,10 @@ func ScheduleWithState(traceID string, version string, invokeCount int, state co
 
 	// no poll request, execute success
 	if !c.WaitingPoll() {
+		logger.WithFields(log.Fields{
+			"plugin_version": version,
+			"invoke_count":   invokeCount,
+		}).Info("plugin schedule success")
 		if err := runtime.SetSuccess(traceID); err != nil {
 			logger.Errorf("plugin execute success but set success err: %v\n", err)
 			return err
@@ -102,6 +116,11 @@ func ScheduleWithState(traceID string, version string, invokeCount int, state co
 		return nil
 	}
 
+	logger.WithFields(log.Fields{
+		"plugin_version":        version,
+		"invoke_count":          invokeCount,
+		"poll_interval_seconds": int(c.PollInterval().Seconds()),
+	}).Info("plugin schedule wait poll")
 	if err := runtime.SetPoll(traceID, version, c.InvokeCount(), c.PollInterval()); err != nil {
 		logger.Errorf("plugin execute success bug set poll err: %v\n", err)
 		if setErr := runtime.SetFail(traceID, err); setErr != nil {

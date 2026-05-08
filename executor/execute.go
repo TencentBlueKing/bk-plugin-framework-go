@@ -46,6 +46,7 @@ func Execute(traceID string, version string, reader pluginruntime.ContextReader,
 		logger.Errorf("get plugin failed: %v\n", err)
 		return constants.StateFail, err
 	}
+	logger.WithField("plugin_version", version).Info("plugin execute start")
 
 	// init context
 	c := kit.NewContext(traceID, constants.StateEmpty, 1, reader, runtime.GetContextStore(), runtime.GetOutputsStore(), logger)
@@ -58,6 +59,10 @@ func Execute(traceID string, version string, reader pluginruntime.ContextReader,
 	}
 
 	if c.WaitingCallback() {
+		logger.WithFields(log.Fields{
+			"plugin_version":           version,
+			"callback_timeout_seconds": int(c.CallbackTimeout().Seconds()),
+		}).Info("plugin execute wait callback")
 		callbackRuntime, ok := runtime.(pluginruntime.PluginCallbackRuntime)
 		if !ok {
 			return constants.StateFail, errors.New("runtime does not support callback state")
@@ -71,9 +76,14 @@ func Execute(traceID string, version string, reader pluginruntime.ContextReader,
 
 	// no poll request, execute success
 	if !c.WaitingPoll() {
+		logger.WithField("plugin_version", version).Info("plugin execute success")
 		return constants.StateSuccess, nil
 	}
 
+	logger.WithFields(log.Fields{
+		"plugin_version":        version,
+		"poll_interval_seconds": int(c.PollInterval().Seconds()),
+	}).Info("plugin execute wait poll")
 	if err := runtime.SetPoll(traceID, version, c.InvokeCount(), c.PollInterval()); err != nil {
 		logger.Errorf("execute success but set poll err: %v\n", err)
 		return constants.StateFail, err
