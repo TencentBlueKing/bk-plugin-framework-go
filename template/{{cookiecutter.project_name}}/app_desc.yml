@@ -1,0 +1,28 @@
+specVersion: 3
+modules:
+  - name: default
+    isDefault: true
+    language: go
+    spec:
+      hooks:
+        preRelease:
+          procCommand: bash bin/sync_apigateway.sh
+      processes:
+        - name: web
+          procCommand: {{cookiecutter.project_name}} server
+          services:
+            - name: web
+              exposedType:
+                name: bk/http
+              targetPort: 5000
+              port: 80
+        - name: worker
+          procCommand: {{cookiecutter.project_name}} worker
+      services:
+        - name: mysql
+        - name: redis
+      configuration:
+        env:
+          - name: BK_APIGW_MAINTAINERS
+            value: {{cookiecutter.init_apigw_maintainer}}
+            description: plugin apigw maintainers
