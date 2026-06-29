@@ -76,7 +76,7 @@ func TestBuildMetaUsesFrameworkProtocolContract(t *testing.T) {
 	require.Contains(t, string(raw), `"allow_scope":{}`)
 }
 
-func TestBuildDetailKeepsGoJSONSchemaOutOfRenderForm(t *testing.T) {
+func TestBuildDetailIncludesExplicitRenderForm(t *testing.T) {
 	version := nextProtocolTestVersion()
 	hub.MustInstallV2(protocolTestPlugin{version: version, desc: "detail plugin"}, hub.PluginSpec{
 		Inputs: struct {
@@ -95,11 +95,13 @@ func TestBuildDetailKeepsGoJSONSchemaOutOfRenderForm(t *testing.T) {
 	require.True(t, data.EnablePluginCallback)
 	require.Contains(t, data.Inputs["properties"], "mode")
 	require.Contains(t, data.Outputs["properties"], "ok")
-	require.Nil(t, data.Forms.RenderForm)
+	require.Equal(t, map[string]interface{}{
+		"mode": map[string]interface{}{"component": "input"},
+	}, data.Forms.RenderForm)
 
 	raw, err := json.Marshal(data)
 	require.NoError(t, err)
-	require.Contains(t, string(raw), `"renderform":null`)
+	require.Contains(t, string(raw), `"renderform":{"mode":{"component":"input"}}`)
 }
 
 func TestBuildDetailKeepsLegacyInputsFormAsInputs(t *testing.T) {

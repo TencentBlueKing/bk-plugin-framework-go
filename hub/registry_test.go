@@ -80,6 +80,7 @@ func TestPluginDetailPlugin(t *testing.T) {
 		contextInputsSchemaJSON: contextInputsSchemaJSON,
 		outputsSchemaJSON:       outputsSchemaJSON,
 		formsRenderFormJSON:     formsRenderFormJSON,
+		formsRenderFormEnabled:  true,
 	}
 
 	assert.Equal(t, detail.Plugin(), &plugin)
@@ -90,6 +91,7 @@ func TestPluginDetailPlugin(t *testing.T) {
 	assert.Equal(t, detail.ContextInputsSchemaJSON(), contextInputsSchemaJSON)
 	assert.Equal(t, detail.OutputsSchemaJSON(), outputsSchemaJSON)
 	assert.Equal(t, detail.FormsRenderFormJSON(), formsRenderFormJSON)
+	assert.True(t, detail.FormsRenderFormEnabled())
 }
 
 func TestReflectJSONSchema(t *testing.T) {
@@ -252,6 +254,7 @@ func TestMustInstallLegacyKeepsInputsFormAsInputsSchema(t *testing.T) {
 		},
 	}, detail.InputsSchemaJSON())
 	assert.Equal(t, detail.FormsRenderFormJSON(), detail.InputsSchemaJSON())
+	assert.False(t, detail.FormsRenderFormEnabled())
 }
 
 func TestMustInstallV2StoresExplicitSchemasAndForm(t *testing.T) {
@@ -285,6 +288,7 @@ func TestMustInstallV2StoresExplicitSchemasAndForm(t *testing.T) {
 		"template_id": map[string]interface{}{"component": "input-number"},
 		"task_name":   map[string]interface{}{"component": "input"},
 	}, detail.FormsRenderFormJSON())
+	assert.True(t, detail.FormsRenderFormEnabled())
 }
 
 func TestGetPluginVersions(t *testing.T) {

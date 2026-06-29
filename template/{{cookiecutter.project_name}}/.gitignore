@@ -1,0 +1,18 @@
+# Build outputs
+bin/apigw.pub
+dist/
+build/
+*.test
+
+# Go
+vendor/
+coverage.out
+
+# Logs and local env
+v3logs/
+.env
+
+# Editors and OS files
+.idea/
+.vscode/
+.DS_Store
