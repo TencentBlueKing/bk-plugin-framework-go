@@ -29,6 +29,8 @@ go build ./...
 
 The default framework version is `{{cookiecutter.framework_version}}`. It must exist as an official Go module tag for normal dependency resolution. When validating an unreleased template branch locally, add a temporary `replace github.com/TencentBlueKing/bk-plugin-framework-go => <local-framework-checkout>` and remove it before release.
 
+The template includes a public `replace github.com/TencentBlueKing/gopkg v1.3.0 => github.com/TencentBlueKing/gopkg v1.0.9` for `bk-plugin-runtime-go {{cookiecutter.runtime_version}}`. This matches the runtime repository and keeps `bk-apigateway-sdks v1.1.4` on the compatible cache API until a newer runtime tag removes the need.
+
 ## Runtime Commands
 
 ```bash
