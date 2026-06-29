@@ -19,10 +19,15 @@ The default version is `1.0.0`. It reads `hello` and writes `world` with the sam
 
 ## Local Checks
 
+Run dependency resolution once before tests. This creates `go.sum` in the generated project.
+
 ```bash
+go mod tidy
 go test ./... -count=1
 go build ./...
 ```
+
+The default framework version is `{{cookiecutter.framework_version}}`. It must exist as an official Go module tag for normal dependency resolution. When validating an unreleased template branch locally, add a temporary `replace github.com/TencentBlueKing/bk-plugin-framework-go => <local-framework-checkout>` and remove it before release.
 
 ## Runtime Commands
 
