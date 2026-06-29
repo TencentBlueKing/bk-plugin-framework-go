@@ -79,6 +79,7 @@ type PluginDetail struct {
 	contextInputsSchemaJSON map[string]interface{}
 	outputsSchemaJSON       map[string]interface{}
 	formsRenderFormJSON     map[string]interface{}
+	formsRenderFormEnabled  bool
 }
 
 // Plugin returns the Plugin instance.
@@ -119,6 +120,12 @@ func (p *PluginDetail) OutputsSchemaJSON() map[string]interface{} {
 // FormsRenderFormJSON returns the unmarshaled render form metadata.
 func (p *PluginDetail) FormsRenderFormJSON() map[string]interface{} {
 	return p.formsRenderFormJSON
+}
+
+// FormsRenderFormEnabled returns whether the render form metadata should be
+// exposed as forms.renderform in the plugin detail protocol.
+func (p *PluginDetail) FormsRenderFormEnabled() bool {
+	return p.formsRenderFormEnabled
 }
 
 // PluginSpec describes a plugin version with explicit schemas and form metadata.
@@ -209,6 +216,7 @@ func mustInstallDetail(p kit.Plugin, spec PluginSpec, legacyInputsFormAsSchema b
 			panic(err)
 		}
 	}
+	formsRenderFormEnabled := !legacyInputsFormAsSchema && len(spec.Form) > 0
 	if legacyInputsFormAsSchema {
 		inputsSchema = spec.Form
 		inputsSchemaJSON = formsRenderFormJSON
@@ -223,6 +231,7 @@ func mustInstallDetail(p kit.Plugin, spec PluginSpec, legacyInputsFormAsSchema b
 		contextInputsSchemaJSON: contextInputsSchemaJSON,
 		outputsSchemaJSON:       outputsSchemaJSON,
 		formsRenderFormJSON:     formsRenderFormJSON,
+		formsRenderFormEnabled:  formsRenderFormEnabled,
 	}
 }
 

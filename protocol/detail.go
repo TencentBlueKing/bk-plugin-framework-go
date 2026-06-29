@@ -39,6 +39,12 @@ func BuildDetail(version string, opts DetailOptions) (DetailData, error) {
 	if err != nil {
 		return DetailData{}, err
 	}
+
+	renderForm := opts.RenderForm
+	if renderForm == nil && detail.FormsRenderFormEnabled() {
+		renderForm = detail.FormsRenderFormJSON()
+	}
+
 	return DetailData{
 		Version:              detail.Plugin().Version(),
 		Desc:                 detail.Plugin().Desc(),
@@ -47,7 +53,7 @@ func BuildDetail(version string, opts DetailOptions) (DetailData, error) {
 		ContextInputs:        detail.ContextInputsSchemaJSON(),
 		Outputs:              detail.OutputsSchemaJSON(),
 		Forms: DetailForms{
-			RenderForm: opts.RenderForm,
+			RenderForm: renderForm,
 		},
 	}, nil
 }
