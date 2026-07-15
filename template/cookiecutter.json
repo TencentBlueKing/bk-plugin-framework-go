@@ -4,5 +4,5 @@
   "plugin_desc": "the description of this plugin",
   "init_apigw_maintainer": "admin",
   "framework_version": "v1.0.4",
-  "runtime_version": "v0.2.5"
+  "runtime_version": "v0.2.8"
 }

@@ -10,7 +10,7 @@ require (
 	github.com/sirupsen/logrus v1.9.2
 )
 
-// bk-plugin-runtime-go v0.2.5 uses bk-apigateway-sdks v1.1.4, which expects
+// bk-plugin-runtime-go v0.2.8 uses bk-apigateway-sdks v1.1.4, which expects
 // the pre-v1.3 gopkg cache API. Keep this public replace until a runtime tag
 // no longer requires it.
 replace github.com/TencentBlueKing/gopkg v1.3.0 => github.com/TencentBlueKing/gopkg v1.0.9
