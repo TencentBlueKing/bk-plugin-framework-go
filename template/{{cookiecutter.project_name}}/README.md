@@ -8,6 +8,8 @@
 .
 ├── app_desc.yml
 ├── bin/sync_apigateway.sh
+├── go.mod
+├── go.sum
 ├── main.go
 └── versions/v100
     ├── form.json
@@ -19,13 +21,14 @@ The default version is `1.0.0`. It reads `hello` and writes `world` with the sam
 
 ## Local Checks
 
-Run dependency resolution once before tests. This creates `go.sum` in the generated project.
+The generated project already includes a tidy `go.mod` and matching `go.sum`, so the default project can be tested and built without resolving dependencies first.
 
 ```bash
-go mod tidy
-go test ./... -count=1
-go build ./...
+go test -mod=readonly ./... -count=1
+go build -mod=readonly ./...
 ```
+
+After adding, removing, or upgrading dependencies, run `go mod tidy` and commit both `go.mod` and `go.sum`. If you override the template's default framework or runtime version during generation, run `go mod tidy` before the first deployment so the indirect dependency graph and checksums match the selected versions.
 
 The default framework version is `{{cookiecutter.framework_version}}`. It must exist as an official Go module tag for normal dependency resolution. When validating an unreleased template branch locally, add a temporary `replace github.com/TencentBlueKing/bk-plugin-framework-go => <local-framework-checkout>` and remove it before release.
 
