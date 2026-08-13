@@ -76,7 +76,7 @@ func TestBuildMetaUsesFrameworkProtocolContract(t *testing.T) {
 	require.Contains(t, string(raw), `"allow_scope":{}`)
 }
 
-func TestBuildDetailIncludesExplicitRenderForm(t *testing.T) {
+func TestBuildDetailMergesFormIntoInputsWhenNoJS(t *testing.T) {
 	version := nextProtocolTestVersion()
 	hub.MustInstallV2(protocolTestPlugin{version: version, desc: "detail plugin"}, hub.PluginSpec{
 		Inputs: struct {
@@ -93,15 +93,57 @@ func TestBuildDetailIncludesExplicitRenderForm(t *testing.T) {
 	require.Equal(t, version, data.Version)
 	require.Equal(t, "detail plugin", data.Desc)
 	require.True(t, data.EnablePluginCallback)
-	require.Contains(t, data.Inputs["properties"], "mode")
+	// form.json is merged into the inputs schema.
+	inputsProps := data.Inputs["properties"].(map[string]interface{})
+	require.Contains(t, inputsProps, "mode")
+	require.Equal(t, "input", inputsProps["mode"].(map[string]interface{})["component"])
 	require.Contains(t, data.Outputs["properties"], "ok")
-	require.Equal(t, map[string]interface{}{
-		"mode": map[string]interface{}{"component": "input"},
-	}, data.Forms.RenderForm)
+	// without form.js, forms.renderform is left null.
+	require.Nil(t, data.Forms.RenderForm)
 
 	raw, err := json.Marshal(data)
 	require.NoError(t, err)
-	require.Contains(t, string(raw), `"renderform":{"mode":{"component":"input"}}`)
+	require.Contains(t, string(raw), `"renderform":null`)
+}
+
+func TestBuildDetailPrefersRenderFormJSOverJSON(t *testing.T) {
+	version := nextProtocolTestVersion()
+	renderForm := `(function () { return [{ tag_code: "mode", type: "input" }]; })();`
+	hub.MustInstallV2(protocolTestPlugin{version: version, desc: "js plugin"}, hub.PluginSpec{
+		Inputs: struct {
+			Mode string `json:"mode"`
+		}{},
+		Form:       []byte(`{"mode":{"component":"input"}}`),
+		RenderForm: []byte(renderForm),
+	})
+
+	data, err := BuildDetail(version, DetailOptions{})
+	require.NoError(t, err)
+	// render form JS takes precedence and is passed through as a raw string.
+	require.Equal(t, renderForm, data.Forms.RenderForm)
+
+	raw, err := json.Marshal(data)
+	require.NoError(t, err)
+	expected, err := json.Marshal(map[string]interface{}{"renderform": renderForm})
+	require.NoError(t, err)
+	require.Contains(t, string(raw), string(expected)[1:len(string(expected))-1])
+}
+
+func TestBuildDetailPrefersExplicitRenderFormOverEverything(t *testing.T) {
+	version := nextProtocolTestVersion()
+	hub.MustInstallV2(protocolTestPlugin{version: version, desc: "explicit plugin"}, hub.PluginSpec{
+		Inputs: struct {
+			Mode string `json:"mode"`
+		}{},
+		Form:       []byte(`{"mode":{"component":"input"}}`),
+		RenderForm: []byte(`(function () { return []; })();`),
+	})
+
+	explicit := `(function () { return [{ tag_code: "mode", type: "select" }]; })();`
+	data, err := BuildDetail(version, DetailOptions{RenderForm: explicit})
+	require.NoError(t, err)
+	// explicit runtime RenderForm takes precedence over form.js.
+	require.Equal(t, explicit, data.Forms.RenderForm)
 }
 
 func TestBuildDetailKeepsLegacyInputsFormAsInputs(t *testing.T) {

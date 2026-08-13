@@ -1,15 +1,33 @@
 package v100
 
 import (
-	_ "embed"
+	"embed"
 	"fmt"
 
 	"github.com/TencentBlueKing/bk-plugin-framework-go/constants"
 	"github.com/TencentBlueKing/bk-plugin-framework-go/kit"
 )
 
-//go:embed form.json
-var InputsForm []byte
+//go:embed forms
+var formFS embed.FS
+
+// readForm reads an optional form file under forms/. It returns nil when the
+// file is absent, so form.json and form.js can be provided independently.
+// At least one of them must exist, otherwise the embed above fails to compile.
+func readForm(name string) []byte {
+	data, err := formFS.ReadFile("forms/" + name)
+	if err != nil {
+		return nil
+	}
+	return data
+}
+
+var (
+	// InputsForm carries form.json (UI attributes merged into inputs schema).
+	InputsForm = readForm("form.json")
+	// RenderFormJS carries form.js (raw renderform, takes precedence).
+	RenderFormJS = readForm("form.js")
+)
 
 // Inputs defines the visible plugin inputs.
 type Inputs struct {
