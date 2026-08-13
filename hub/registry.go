@@ -80,6 +80,8 @@ type PluginDetail struct {
 	outputsSchemaJSON       map[string]interface{}
 	formsRenderFormJSON     map[string]interface{}
 	formsRenderFormEnabled  bool
+	formsRenderFormJS       string
+	formsRenderFormJSSet    bool
 }
 
 // Plugin returns the Plugin instance.
@@ -128,12 +130,33 @@ func (p *PluginDetail) FormsRenderFormEnabled() bool {
 	return p.formsRenderFormEnabled
 }
 
+// FormsRenderFormJS returns the raw render form JS string that should be
+// exposed as forms.renderform in the plugin detail protocol.
+func (p *PluginDetail) FormsRenderFormJS() string {
+	return p.formsRenderFormJS
+}
+
+// FormsRenderFormJSEnabled returns whether the render form JS string should be
+// exposed as forms.renderform in the plugin detail protocol. It takes
+// precedence over the JSON render form metadata.
+func (p *PluginDetail) FormsRenderFormJSEnabled() bool {
+	return p.formsRenderFormJSSet
+}
+
 // PluginSpec describes a plugin version with explicit schemas and form metadata.
+//
+// Form carries the JSON render form metadata (form.json) that will be exposed
+// as forms.renderform when no RenderForm JS is provided.
+//
+// RenderForm carries the raw render form JS content (form.js). When it is not
+// empty, it will be passed through as forms.renderform as-is and takes
+// precedence over Form.
 type PluginSpec struct {
 	Inputs        interface{}
 	ContextInputs interface{}
 	Outputs       interface{}
 	Form          []byte
+	RenderForm    []byte
 }
 
 // reflectJSONSchema returns the byte array and string map of object's json schema.
@@ -191,8 +214,32 @@ func mustInstallDetail(p kit.Plugin, spec PluginSpec, legacyInputsFormAsSchema b
 		panic(fmt.Errorf("version %v already been installed\n", v))
 	}
 
+	// parse form.json metadata (field -> UI attributes) once, it will be used
+	// either as legacy inputs schema or as extra attributes merged into the
+	// inputs schema.
+	formsRenderFormJSON := make(map[string]interface{})
+	if len(spec.Form) > 0 {
+		err := json.Unmarshal(spec.Form, &formsRenderFormJSON)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// for non-legacy plugins, merge form.json into the inputs schema as extra
+	// attributes so that it can be used as a fallback rendering when no
+	// form.js is provided, aligning with the Python framework behavior.
+	var inputsExtraAttrs map[string]map[string]interface{}
+	if !legacyInputsFormAsSchema && len(spec.Form) > 0 {
+		inputsExtraAttrs = make(map[string]map[string]interface{}, len(formsRenderFormJSON))
+		for prop, attrs := range formsRenderFormJSON {
+			if attrsMap, ok := attrs.(map[string]interface{}); ok {
+				inputsExtraAttrs[prop] = attrsMap
+			}
+		}
+	}
+
 	// generate inputs schema
-	inputsSchema, inputsSchemaJSON, err := reflectJSONSchema(spec.Inputs, nil)
+	inputsSchema, inputsSchemaJSON, err := reflectJSONSchema(spec.Inputs, inputsExtraAttrs)
 	if err != nil {
 		panic(err)
 	}
@@ -209,17 +256,23 @@ func mustInstallDetail(p kit.Plugin, spec PluginSpec, legacyInputsFormAsSchema b
 		panic(err)
 	}
 
-	formsRenderFormJSON := make(map[string]interface{})
-	if len(spec.Form) > 0 {
-		err = json.Unmarshal(spec.Form, &formsRenderFormJSON)
-		if err != nil {
-			panic(err)
-		}
-	}
-	formsRenderFormEnabled := !legacyInputsFormAsSchema && len(spec.Form) > 0
+	// form.json is never exposed as forms.renderform anymore. It is only used
+	// as legacy inputs schema (legacyInputsFormAsSchema) or merged into the
+	// inputs schema above as a fallback rendering. forms.renderform is solely
+	// determined by form.js.
+	formsRenderFormEnabled := false
 	if legacyInputsFormAsSchema {
 		inputsSchema = spec.Form
 		inputsSchemaJSON = formsRenderFormJSON
+	}
+
+	// store the render form JS content as-is without any parsing, it will be
+	// passed through as forms.renderform and takes precedence over the JSON
+	// render form metadata.
+	var formsRenderFormJS string
+	formsRenderFormJSSet := !legacyInputsFormAsSchema && len(spec.RenderForm) > 0
+	if formsRenderFormJSSet {
+		formsRenderFormJS = string(spec.RenderForm)
 	}
 
 	hub[v] = &PluginDetail{
@@ -232,6 +285,8 @@ func mustInstallDetail(p kit.Plugin, spec PluginSpec, legacyInputsFormAsSchema b
 		outputsSchemaJSON:       outputsSchemaJSON,
 		formsRenderFormJSON:     formsRenderFormJSON,
 		formsRenderFormEnabled:  formsRenderFormEnabled,
+		formsRenderFormJS:       formsRenderFormJS,
+		formsRenderFormJSSet:    formsRenderFormJSSet,
 	}
 }
 

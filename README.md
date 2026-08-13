@@ -29,7 +29,10 @@ bk-plugin-framework-go 是一个轻量化系统插件开发框架，开发者只
 │   └── post_compile
 ├── bk_plugin
 │   ├── v100
-│       └── plugin.go
+│         ├── forms/
+│         │    ├── form.js
+│         │    └── form.json
+│         ├── plugin.go
 ├── app.json
 ├── go.mod
 ├── main.go
@@ -120,21 +123,75 @@ func (p *Plugin) Execute(c *kit.Context) error {
 }
 ```
 ### 注册插件
-在main.go 文件中，需要注册我们定义好的插件到hub中，可以同时注册多个不同版本到插件
+在main.go 文件中，需要注册我们定义好的插件到hub中，可以同时注册多个不同版本到插件。推荐使用 `MustInstallV2` 通过 `hub.PluginSpec` 显式注册：
 ```go
 package main
 
 import (
 	v100 "bk-plugin-go/versions/v100"
-	"github.com/TencentBlueKing/beego-runtime/runner"
+	"github.com/TencentBlueKing/bk-plugin-runtime-go/runner"
 	"github.com/TencentBlueKing/bk-plugin-framework-go/hub"
 )
 
 func main() {
-	hub.MustInstall(&v100.Plugin{}, v100.Inputs{}, v100.ContextInputs{}, v100.Outputs{}, v100.InputsForm)
+	hub.MustInstallV2(&v100.Plugin{}, hub.PluginSpec{
+		Inputs:        v100.Inputs{},
+		ContextInputs: v100.ContextInputs{},
+		Outputs:       v100.Outputs{},
+		Form:          v100.InputsForm, // form.json（[]byte，通过 //go:embed 嵌入）
+	})
 	runner.Run()
 }
 ```
+
+> `PluginSpec.Form` 与 `PluginSpec.RenderForm` 的类型均为 `[]byte`，通常通过 `//go:embed` 从 `form.json` / `form.js` 读取，不要直接传入 `kit.Form` 字面量。
+>
+> `MustInstall(p, contextInputs, outputs, inputsForm)` 为旧版兼容入口（无 `Inputs` 参数），仅用于兼容存量插件，新插件请统一使用 `MustInstallV2`。二者在表单处理上的差异详见下文「表单渲染」章节。
+
+### 表单渲染（`forms.renderform`）
+
+插件详情接口返回的 `data.forms.renderform` 用于前端渲染入参表单。其取值优先级为：**① 运行时显式传入的 `RenderForm` → ② `form.js`（原样透传）→ ③ `null`**：
+
+- `RenderForm`（运行时传入，最高优先级）：由运行时显式设置，直接作为 `forms.renderform`。
+- `form.js`（JS）：通过 `//go:embed form.js` 嵌入为 `RenderFormJS`，传入 `hub.PluginSpec.RenderForm`。内容会以字符串形式**原样透传**，不做任何解析，与 Python 版框架的 `form.js` 行为一致。
+- 若以上均未提供，`forms.renderform` 为 `null`。
+
+`form.json`（通过 `//go:embed form.json` 嵌入为 `InputsForm`，传入 `hub.PluginSpec.Form`）**不会**作为 `forms.renderform`。它会被**合入 inputs schema**（作为字段的 UI 属性）；当没有 `form.js` 时，`forms.renderform` 为 `null`，前端回退到按 inputs schema（已合入 `form.json` 的 UI 属性）渲染。
+
+推荐使用 `MustInstallV2` 显式注册，可同时提供 `form.js` 与 `form.json`，运行时按上述优先级选择：
+
+```go
+package main
+
+import (
+	v100 "bk-plugin-go/versions/v100"
+	"github.com/TencentBlueKing/bk-plugin-runtime-go/runner"
+	"github.com/TencentBlueKing/bk-plugin-framework-go/hub"
+)
+
+func main() {
+	hub.MustInstallV2(&v100.Plugin{}, hub.PluginSpec{
+		Inputs:        v100.Inputs{},
+		ContextInputs: v100.ContextInputs{},
+		Outputs:       v100.Outputs{},
+		Form:          v100.InputsForm,  // form.json（[]byte，合入 inputs schema）
+		RenderForm:    v100.RenderFormJS, // form.js（[]byte，作为 forms.renderform）
+	})
+	runner.Run()
+}
+```
+
+对应的版本目录中通过 `//go:embed` 嵌入两个文件：
+
+```go
+//go:embed form.json
+var InputsForm []byte
+
+//go:embed form.js
+var RenderFormJS []byte
+```
+
+若只提供 `form.json` 而不提供 `RenderForm`（或让 `form.js` 为空），`forms.renderform` 为 `null`，前端会回退到按 inputs schema（已合入 `form.json` 的 UI 属性）渲染。
 
 ### 插件上下文
 插件上下文 Context对象中的提供了一组方法, 可以读取插件所需要的状态，输入，上下文等信息。具体可以看如下示例。
