@@ -40,9 +40,17 @@ func BuildDetail(version string, opts DetailOptions) (DetailData, error) {
 		return DetailData{}, err
 	}
 
+	// resolve forms.renderform with the following priority:
+	// 1. explicit RenderForm passed by the runtime;
+	// 2. render form JS string (form.js), passed through as-is;
+	// 3. null.
+	//
+	// form.json is no longer exposed as forms.renderform. When no form.js is
+	// provided, forms.renderform is left null and the frontend falls back to
+	// rendering the inputs schema (into which form.json has been merged).
 	renderForm := opts.RenderForm
-	if renderForm == nil && detail.FormsRenderFormEnabled() {
-		renderForm = detail.FormsRenderFormJSON()
+	if renderForm == nil && detail.FormsRenderFormJSEnabled() {
+		renderForm = detail.FormsRenderFormJS()
 	}
 
 	return DetailData{
