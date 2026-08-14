@@ -92,6 +92,8 @@ func TestPluginDetailPlugin(t *testing.T) {
 	assert.Equal(t, detail.OutputsSchemaJSON(), outputsSchemaJSON)
 	assert.Equal(t, detail.FormsRenderFormJSON(), formsRenderFormJSON)
 	assert.True(t, detail.FormsRenderFormEnabled())
+	assert.Equal(t, "", detail.FormsRenderFormJS())
+	assert.False(t, detail.FormsRenderFormJSEnabled())
 }
 
 func TestReflectJSONSchema(t *testing.T) {
@@ -281,14 +283,51 @@ func TestMustInstallV2StoresExplicitSchemasAndForm(t *testing.T) {
 
 	detail, err := GetPluginDetail("2.1.0")
 	assert.Nil(t, err)
-	assert.Contains(t, detail.InputsSchemaJSON()["properties"], "template_id")
+	// form.json is merged into the inputs schema as extra attributes.
+	inputsProps := detail.InputsSchemaJSON()["properties"].(map[string]interface{})
+	assert.Contains(t, inputsProps, "template_id")
+	assert.Contains(t, inputsProps, "task_name")
+	assert.Equal(t, "input-number", inputsProps["template_id"].(map[string]interface{})["component"])
+	assert.Equal(t, "input", inputsProps["task_name"].(map[string]interface{})["component"])
 	assert.Contains(t, detail.ContextInputsSchemaJSON()["properties"], "bk_biz_id")
 	assert.Contains(t, detail.OutputsSchemaJSON()["properties"], "result")
+	// form.json is kept as metadata but never exposed as forms.renderform.
 	assert.Equal(t, map[string]interface{}{
 		"template_id": map[string]interface{}{"component": "input-number"},
 		"task_name":   map[string]interface{}{"component": "input"},
 	}, detail.FormsRenderFormJSON())
-	assert.True(t, detail.FormsRenderFormEnabled())
+	assert.False(t, detail.FormsRenderFormEnabled())
+	assert.False(t, detail.FormsRenderFormJSEnabled())
+}
+
+func TestMustInstallV2StoresRenderFormJS(t *testing.T) {
+	clearHub()
+
+	type Inputs struct {
+		Hello string `json:"hello"`
+	}
+
+	renderForm := []byte(`(function () { return [{ tag_code: "hello", type: "input" }]; })();`)
+	form := []byte(`{"hello":{"component":"input"}}`)
+	MustInstallV2(&MustInstallTestPlugin{version: "2.2.0"}, PluginSpec{
+		Inputs:     Inputs{},
+		Form:       form,
+		RenderForm: renderForm,
+	})
+
+	detail, err := GetPluginDetail("2.2.0")
+	assert.Nil(t, err)
+	// render form JS should be stored as-is without any parsing.
+	assert.Equal(t, string(renderForm), detail.FormsRenderFormJS())
+	assert.True(t, detail.FormsRenderFormJSEnabled())
+	// the JSON render form metadata is still parsed and merged into inputs,
+	// but never exposed as forms.renderform.
+	assert.Equal(t, map[string]interface{}{
+		"hello": map[string]interface{}{"component": "input"},
+	}, detail.FormsRenderFormJSON())
+	assert.False(t, detail.FormsRenderFormEnabled())
+	inputsProps := detail.InputsSchemaJSON()["properties"].(map[string]interface{})
+	assert.Equal(t, "input", inputsProps["hello"].(map[string]interface{})["component"])
 }
 
 func TestGetPluginVersions(t *testing.T) {
