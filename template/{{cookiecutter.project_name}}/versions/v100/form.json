@@ -1,5 +1,8 @@
 {
   "hello": {
+    "type": "string",
+    "title": "Hello",
+    "default": "",
     "ui:component": {
       "name": "bk-input",
       "props": {}
