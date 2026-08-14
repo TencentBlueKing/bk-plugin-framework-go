@@ -12,6 +12,7 @@ func main() {
 		ContextInputs: v100.ContextInputs{},
 		Outputs:       v100.Outputs{},
 		Form:          v100.InputsForm,
+		RenderForm:    v100.RenderFormJS,
 	})
 	runner.Run()
 }
